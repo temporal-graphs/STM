@@ -1,0 +1,257 @@
+rule emailEUCore:
+    shell:
+      """
+
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_emailEUCore2
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_emailEUCore2
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_emailEUCore2/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+        #spark.executor.memory=160g controls memory per executor
+        # when "spark.cores.max=80" --conf "spark.executor.core=5" it created 9 workers with 26 cores each
+        # when spark.executor.memory=160g, it did not start the job. when set to 20gb, it started fine
+        time spark-submit --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        --master spark://$MASTER:7077 --driver-cores 12  \
+        --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+        --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000" \
+        --conf "spark.sql.broadcastTimeout=10000000"   --conf "spark.executor.memory=40g" \
+        --conf "spark.driver.memory=40g" \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails
+         -XX:+PrintGCTimeStamps" \
+        --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000" \
+        --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType" \
+        "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        -input_file=file:///people/puro755/data/publication/kdd/input/kdd_email-Eu-core-temporal_etype.txt \
+        -out_json_file=/people/puro755/data/publication/kdd/output/kdd_email-Eu-core-temporal_etype.json -separator=" " \
+        -sampling=false \
+        -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_email-Eu-core-temporal_etypeDeg.csv \
+        -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=0
+        """
+
+rule iastackuserpost:
+    shell:
+      """
+
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_iastack
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_iastack
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_iastack/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+        #spark.executor.memory=160g controls memory per executor
+        # when "spark.cores.max=80" --conf "spark.executor.core=5" it created 9 workers with 26 cores each
+        # when spark.executor.memory=160g, it did not start the job. when set to 20gb, it started fine
+        time spark-submit --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        --master spark://$MASTER:7077 --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+        --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000" \
+        --conf "spark.executor.memory=40g"  --conf "spark.driver.memory=40g" \
+        --conf "spark.sql.broadcastTimeout=10000000" \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+        --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000" \
+        --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType" \
+        "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        -input_file=file:///people/puro755/data/publication/kdd/input/kdd_ia-stackexch-user-marks-post-und.csv \
+        -out_json_file=/people/puro755/data/publication/kdd/output/kdd_ia-stackexch-user-marks-post-und.json -separator="," \
+        -sampling=false -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_ia-stackexch-user-marks-post-undDeg.csv \
+        -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=1
+        """
+
+rule maacomm:
+    shell:
+      """
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_maacomm
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_maacomm
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_maacomm/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+        #spark.executor.memory=160g controls memory per executor
+        # when "spark.cores.max=80" --conf "spark.executor.core=5" it created 9 workers with 26 cores each
+        # when spark.executor.memory=160g, it did not start the job. when set to 20gb, it started fine
+        time spark-submit
+        --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        --master spark://$MASTER:7077 --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+        --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000" \
+        --conf "spark.executor.memory=40g"  --conf "spark.driver.memory=40g" \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+        --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000" \
+        --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType" \
+        "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        -input_file=file:///people/puro755/data/publication/kdd/input/kdd_allPhoneEmailWithETpye2MEdges2Months.csv \
+        -out_json_file=/people/puro755/data/publication/kdd/output/kdd_allPhoneEmailWithETpye2MEdges2Months.json -separator="," \
+        -sampling=false -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_allPhoneEmailWithETpye2MEdges2MonthsDeg.csv \
+        -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=0,1
+        """
+
+rule higgs:
+    shell:
+      """
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_higgs
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_higgs
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_higgs/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+        time spark-submit --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        --master spark://$MASTER:7077 --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+        --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000" \
+        --conf "spark.executor.memory=40g"  --conf "spark.driver.memory=40g" \
+        --conf "spark.sql.broadcastTimeout=10000000" \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+        --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000" \
+        --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType" \
+        "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        -input_file=file:///people/puro755/data/publication/kdd/input/kdd_higgs-activity_timeComma.csv \
+        -out_json_file=/people/puro755/data/publication/kdd/output/kdd_higgs-activity_timeComma.json -separator="," \
+        -sampling=false \
+        -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_higgs-activity_timeCommaDegDist.csv \
+        -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=0
+      """
+
+rule bitcoinalpha:
+    shell:
+      """
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_bitcoinalpha2
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_bitcoinalpha2
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_bitcointalpha2/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+        time spark-submit --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        --master spark://$MASTER:7077 --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+        --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000" \
+        --conf "spark.executor.memory=40g"  --conf "spark.driver.memory=40g" \
+        --conf "spark.sql.broadcastTimeout=10000000" \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+        --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000" \
+        --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType" \
+        "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        -input_file=file:///people/puro755/data/publication/kdd/input/kdd_soc-sign-bitcoinalpha.csv \
+        -out_json_file=/people/puro755/data/publication/kdd/output/kdd_soc-sign-bitcoinalpha.json \
+        -separator=" " \
+        -sampling=false \
+        -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_soc-sign-bitcoinalphaDeg.csv \
+        -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=0
+      """
+
+rule collegeMsg:
+    shell:
+     """
+
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_CollegeMsg2
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_CollegeMsg2
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_CollegeMsg2/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+      time spark-submit
+      --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+      --master spark://$MASTER:7077 --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+      --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000" \
+      --conf "spark.driver.cores=10" \
+      --conf "spark.sql.broadcastTimeout=10000000"    --conf "spark.executor.memory=40g" \
+      --conf "spark.driver.memory=40g" \
+      --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+      --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000" \
+      --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType" \
+      "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+      -input_file=file:///people/puro755/data/publication/kdd/input/kdd_CollegeMsg-etype.txt \
+      -out_json_file=/people/puro755/data/publication/kdd/output/kdd_CollegeMsg-etype.json -separator=" " \
+      -sampling=false -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_CollegeMsg-etypeDeg.csv \
+      -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=0
+      """
+
+
+rule maaproc:
+    shell:
+     """
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_maaproc2
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_maaproc2
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_maaproc2/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+        #spark.executor.memory=160g controls memory per executor
+        # when "spark.cores.max=80" --conf "spark.executor.core=5" it created 9 workers with 26 cores each
+        # when spark.executor.memory=160g, it did not start the job. when set to 20gb, it started fine
+        time spark-submit --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar"        \
+        --master spark://$MASTER:7077 --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+        --conf "spark.sql.shuffle.partitions=1000" --conf "spark.default.parallelism=1000"  \
+        --conf "spark.executor.memory=40g"  --conf "spark.driver.memory=40g"   \
+        --conf "spark.sql.broadcastTimeout=10000000"    \
+        --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails-XX:+PrintGCTimeStamps"   \
+        --conf "spark.driver.maxResultSize=40g"  --conf "spark.network.timeout=10000000"       \
+        --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType"         \
+        "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.10.jar" \
+        -input_file=file:///people/puro755/data/publication/kdd/input/kdd_v7_10k_i10_proc_layered.csv \
+        -out_json_file=/people/puro755/data/publication/kdd/output/kdd_v7_10k_i10_proc_layered.json \
+        -separator="," \
+        -sampling=false \
+        -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_v7_10k_i10_proc_layeredDeg.csv  \
+        -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=1
+      """
+
+rule techtopo:
+  shell:
+       """
+      module load spark
+      export SPARK_LOCAL_DIRS=/projects/maa_sigmaplus/scratch/puro755/kdd_techtopo
+      export SPARK_WORKER_DIR=/projects/maa_sigmaplus/scratch/puro755/kdd_techtopo
+      export SPARK_LOG_DIR="/projects/maa_sigmaplus/scratch/puro755/kdd_techtopo/spark-logs"
+      mkdir -p $SPARK_LOG_DIR
+
+      MASTER=$(hostname)
+      srun start_spark.sh $MASTER &
+
+      sleep 10
+
+      time spark-submit --jars "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.3.jar" \
+      --master spark://$MASTER:7077 \
+      --conf "spark.cores.max=80" --conf "spark.executor.core=5" \
+      --conf "spark.sql.shuffle.partitions=500" --conf "spark.default.parallelism=500" \
+      --conf "spark.executor.memory=20g"  --conf "spark.driver.memory=40g"    \
+      --conf "spark.driver.extraJavaOptions=-XX:+UseCompressedOops -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+      --conf "spark.driver.maxResultSize=20g"  --conf "spark.network.timeout=10000000"        \
+      --class "gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType"  \
+      "file:///people/puro755/data/publication/kdd/uber-STM-1.0-SNAPSHOT_V7.0.3.jar" \
+      -input_file=file:///people/puro755/data/publication/kdd/input/kdd_tech-as-topology.csv \
+      -out_json_file=/people/puro755/data/publication/kdd/output/kdd_tech-as-topology.json \
+      -separator=","     -sampling=false -avg_outdeg_file=/people/puro755/data/publication/kdd/kdd_tech-as-topologyDeg.csv \
+      -sampling_population=10 -sample_selection_prob=1.0 -valid_etypes=1
+      """
