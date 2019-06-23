@@ -166,22 +166,14 @@ object STM_NodeArrivalRateMultiType {
       clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
     prefix_annotation = clo.getOrElse("-prefix","kdd")
     println("input paramters are :" + clo.toString)
-
     println("Spark paramters are ", gSC.getConf.getAll.foreach(println))
+
     /*
      * Get the base tag rdd which has 4 things: src etype dst time
      *
      */
     val inputTAG = TAGBuilder.init_rdd(nodeFile, gSC, sep)
-    /*val inputSimpleTAG =
-      inputTAG.get_simple_tagrdd.filter(e => e._4 >= 0).cache()
 
-    println("tag size is " + inputSimpleTAG.count())
-    val all_time = inputSimpleTAG.map(e => e._4.toLong)
-    var min_time = all_time.min()
-    var max_time = all_time.max()
-    val duration = max_time - min_time
-    */
 
     /*
      * Main method to get motif probability
@@ -190,7 +182,7 @@ object STM_NodeArrivalRateMultiType {
      *    * offsetProb: time offset of the motifs
      *    * avg_out_deg: out degree distribution of the input graph
      */
-    var local_res = getMotifProbOffsetProb(
+    var local_res = processTAG(
       inputTAG,
       gDebug,
       gSC,
@@ -928,7 +920,7 @@ object STM_NodeArrivalRateMultiType {
     return inputSimpleTAG.distinct()
   }
 
-  def getMotifProbOffsetProb(
+  def processTAG(
     baseTAG: gov.pnnl.datamodel.TAG,
     gDebug: Boolean,
     gSC: SparkContext,
