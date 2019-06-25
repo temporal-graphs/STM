@@ -399,7 +399,7 @@ object STM_NodeArrivalRateMultiType {
               val validMotifsArray: RDD[(Int, Int, Int, Long)] =
                 if (motif
                       .equalsIgnoreCase(gAtomicMotifs("twoloop")))
-                  get_4eNv_motifs_mTypes(
+                  find4EdgNVtxMotifs(
                     tmpG,
                     motif,
                     et1,
@@ -413,7 +413,7 @@ object STM_NodeArrivalRateMultiType {
                     4
                   )
                 else
-                  get_4eNv_motifs_mTypes(
+                  find4EdgNVtxMotifs(
                     tmpG,
                     motif,
                     et1,
@@ -470,7 +470,7 @@ object STM_NodeArrivalRateMultiType {
     tmpG
   }
 
-  def find_all_ITeM(
+  def findAllITeM(
                          gSC: SparkContext,
                          gSQLContext: SQLContext,
                          gETypes: Array[eType],
@@ -659,7 +659,7 @@ object STM_NodeArrivalRateMultiType {
 
 
     try {
-      val g = find_all_ITeM(gSC, gSQLContext, gETypes, call_id,initial_simple_tag)
+      val g = findAllITeM(gSC, gSQLContext, gETypes, call_id,initial_simple_tag)
       if (gDebug) {
         println(gMotifInfo.toList)
         println("number of edges in last graph", g.edges.count)
@@ -800,7 +800,7 @@ object STM_NodeArrivalRateMultiType {
                                                                           time_in_window)) )
             var call_id = 0
             try {
-              find_all_ITeM( gSC, gSQLContext, gETypes, call_id,local_tag)
+              findAllITeM( gSC, gSQLContext, gETypes, call_id,local_tag)
             } catch {
               case e: Exception => {
                 println("\nERROR: Call id = " + call_id)
@@ -1398,7 +1398,7 @@ val avg_out_deg = Array[Double]()
             val validMotifsArray: RDD[(Int, Int, Int, Long)] =
               if ((motif.equalsIgnoreCase(gAtomicMotifs("outstar")))
                   || (motif.equalsIgnoreCase(gAtomicMotifs("instar"))))
-                get_3eNv_motifs_mTypes(
+                find3EdgNVtxMotifs(
                   tmpG,
                   motif,
                   symmetry,
@@ -1412,7 +1412,7 @@ val avg_out_deg = Array[Double]()
                   3
                 )
               else
-                get_3eNv_motifs_mTypes(
+                find3EdgNVtxMotifs(
                   tmpG,
                   motif,
                   symmetry,
@@ -1624,7 +1624,7 @@ val avg_out_deg = Array[Double]()
     set_of_v
   }
 
-  def get_4eNv_motifs_mTypes(
+  def find4EdgNVtxMotifs(
     tmpG: GraphFrame,
     motif: String,
     et1: eType,
@@ -1672,9 +1672,9 @@ val avg_out_deg = Array[Double]()
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("e4.type = " + gETypes(et4))
-          .filter("e1.time < e2.time")
-          .filter("e2.time < e3.time")
-          .filter("e3.time < e4.time").cache()
+          //.filter("e1.time < e2.time")
+          //.filter("e2.time < e3.time")
+          //.filter("e3.time < e4.time").cache()
       else
         tmpG
           .find(motif)
@@ -1690,9 +1690,9 @@ val avg_out_deg = Array[Double]()
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("e4.type = " + gETypes(et4))
-          .filter("e1.time < e2.time")
-          .filter("e2.time < e3.time")
-          .filter("e3.time < e4.time").cache()
+          .filter("e1.time < e2.time").cache()
+          //.filter("e2.time < e3.time")
+          //.filter("e3.time < e4.time").cache()
 
     val selectEdgeArr = Array(
       "e1.src",
@@ -1740,19 +1740,6 @@ val avg_out_deg = Array[Double]()
     |111|   0|106|1012749049|106|   0|103|1012522993|103|   0|316|1050004092|316|   0|111|1018058640|
     |316|   0|106|1018642772|106|   0|111|1040583493|111|   0|492|1024692429|492|   0|316|1036385304|
     |316|   0| 97|1015455157| 97|   0|111|1015207236|111|   0|492|1024692429|492|   0|316|1036385304|
-    |316|   0|111|1018058640|111|   0|106|1012749049|106|   0|103|1012522993|103|   0|316|1050004092|
-    |316|   0| 97|1015455157| 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|
-    |316|   0|106|1018642772|106|   0|111|1040583493|111|   0|103|1024268020|103|   0|316|1050004092|
-    |316|   0| 97|1015455157| 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|
-    |316|   0|111|1018058640|111|   0| 97|1024268131| 97|   0|103|1046662671|103|   0|316|1050004092|
-    | 97|   0|316|1032832414|316|   0|106|1018642772|106|   0|111|1040583493|111|   0| 97|1024268131|
-    | 97|   0|103|1046662671|103|   0|316|1050004092|316|   0|111|1018058640|111|   0| 97|1024268131|
-    | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|111|1042699512|111|   0| 97|1024268131|
-    |492|   0|316|1036385304|316|   0|106|1018642772|106|   0|111|1040583493|111|   0|492|1024692429|
-    |492|   0|316|1036385304|316|   0| 97|1015455157| 97|   0|111|1015207236|111|   0|492|1024692429|
-    | 97|   0|111|1015207236|111|   0|492|1024692429|492|   0|316|1036385304|316|   0| 97|1015455157|
-    | 97|   0|103|1046662671|103|   0|111|1042699512|111|   0|316|1015617449|316|   0| 97|1015455157|
-    | 97|   0|106|1016843104|106|   0|111|1040583493|111|   0|316|1015617449|316|   0| 97|1015455157|
     | 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|316|   0| 97|1015455157|
     | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|316|   0| 97|1015455157|
      */
@@ -2072,7 +2059,7 @@ val avg_out_deg = Array[Double]()
     * @param symmetry
     * @return
     */
-  def get_3eNv_motifs_mTypes(
+  def find3EdgNVtxMotifs(
     tmpG: GraphFrame,
     motif: String,
     symmetry: Boolean = false,
@@ -2123,8 +2110,8 @@ val avg_out_deg = Array[Double]()
           )
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
-          .filter("e1.time < e2.time")
-          .filter("e2.time < e3.time").cache()
+          .filter("e1.time < e2.time").cache()
+          //.filter("e2.time < e3.time").cache()
       else
         tmpG
           .find(motif)
@@ -2286,7 +2273,7 @@ val avg_out_deg = Array[Double]()
 
   }
 
-  def get_2eNv_motifs_mTypes(
+  def find2EdgNVtxMotifs(
     tmpG: GraphFrame,
     motif: String,
     symmetry: Boolean = false,
@@ -2454,7 +2441,7 @@ val avg_out_deg = Array[Double]()
           println("graph dyad sizev ", g.vertices.count)
           println("graph size e", g.edges.count)
         }
-        val validMotifsArray = get_2eNv_motifs_mTypes(
+        val validMotifsArray = find2EdgNVtxMotifs(
           tmpG,
           motif,
           symmetry,
