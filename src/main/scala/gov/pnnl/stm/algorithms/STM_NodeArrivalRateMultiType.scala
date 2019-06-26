@@ -6,7 +6,7 @@
   */
 package gov.pnnl.stm.algorithms
 
-import java.io.{File, FileWriter, PrintWriter, StringWriter}
+import java.io._
 import java.nio.file.{Files, Paths}
 
 import util.control.Breaks._
@@ -17,6 +17,7 @@ import org.graphframes.GraphFrame
 import gov.pnnl.builders.{SparkContextInitializer, TAGBuilder}
 import gov.pnnl.datamodel.GlobalTypes._
 import gov.pnnl.stm.conf.STMConf
+import org.apache.commons.io.filefilter.RegexFileFilter
 import scalaz._
 import org.apache.spark.sql.functions.{col, udf}
 import scalaz.Scalaz._
@@ -151,6 +152,15 @@ object STM_NodeArrivalRateMultiType {
     moveFileInner(gMotifIndependenceFile)
     moveFileInner(gVertexIndependenceFile)
     moveFileInner(gHigherGraphFile)
+
+    // get all vertext association files
+      //t1 + "Motif_Vertex_Association_"+
+    val directory = new File(".")
+    val pattern =  t1 + "Motif_Vertex_Association_"
+    System.out.println("\nFiles that match regular expression: " + pattern)
+    val  filter :FileFilter = new RegexFileFilter(pattern)
+    val files = directory.listFiles(filter)
+    files.foreach(afile=>moveFileInner(afile))
     }
     catch {
       case e: Exception => {
@@ -247,6 +257,7 @@ object STM_NodeArrivalRateMultiType {
       sample_selection_prob,
       num_iterations,
       gETypes: Array[Int]
+
     )
 
     println("local res 1" + local_res._1)
