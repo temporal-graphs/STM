@@ -57,6 +57,7 @@ object STM_NodeArrivalRateMultiType {
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
   val gMotifInfo = ListBuffer.empty[List[Int]]
+  val gMotifOrbitInfo = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
 
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
@@ -65,6 +66,9 @@ object STM_NodeArrivalRateMultiType {
 
   val gMotifAllProbFile = new File(t1 + "MotifProb_AbsCount_" + prefix_annotation + ".txt")
   val gMotifAllProbFWriter = new PrintWriter(gMotifAllProbFile)
+
+  val gMotifOrbitFile = new File(t1 + "MotifOrbit_Independence_" + prefix_annotation + ".txt")
+  val gMotifOrbitFWriter = new PrintWriter(gMotifOrbitFile)
 
   val gMotifAllProbFile_Individual = new File(t1 + "MotifProb_AbsCount_Individual" +
                                                    prefix_annotation + ".txt")
@@ -86,9 +90,7 @@ object STM_NodeArrivalRateMultiType {
   val gVertexIndependenceFile = new File(t1 + "Vertex_Independence_" + prefix_annotation + ".txt")
   val gVertexIndependenceFWriter = new PrintWriter(new FileWriter(gVertexIndependenceFile,true))
 
-  val gHigherGraphFile = new File(t1 + "HigherGraph_" +
-                                         prefix_annotation + "" +
-                                         ".txt")
+  val gHigherGraphFile = new File(t1 + "HigherGraph_" +prefix_annotation + "" + ".txt")
   val gHigherGraphFWriter = new PrintWriter(new FileWriter(gHigherGraphFile,true))
 
 
@@ -153,13 +155,14 @@ object STM_NodeArrivalRateMultiType {
     moveFileInner(gVertexIndependenceFile)
     moveFileInner(gHigherGraphFile)
 
-    // get all vertext association files
-      //t1 + "Motif_Vertex_Association_"+
     val directory = new File(".")
-    val pattern =  t1 + "Motif_Vertex_Association_"
+      println("curr dir is ", directory.getAbsolutePath)
+    val pattern =  "^.*"+t1+".*.txt$"
     System.out.println("\nFiles that match regular expression: " + pattern)
-    val  filter :FileFilter = new RegexFileFilter(pattern)
+    val  filter :FileFilter = new RegexFileFilter("^.*"+t1+".*.txt$")
     val files = directory.listFiles(filter)
+
+    println("Files to move are ", files.toList)
     files.foreach(afile=>moveFileInner(afile))
     }
     catch {
@@ -215,21 +218,11 @@ object STM_NodeArrivalRateMultiType {
       else clo.getOrElse("-separator", ",")
     println("sep is " + sep)
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
-    val out_json_file_os_path =
-      clo.getOrElse("-out_json_file_os_path", "output-motif.json")
-    val sampling: Boolean = clo.getOrElse("-sampling", "false").toBoolean
     val avg_outdeg_file =
       clo.getOrElse("-avg_outdeg_file", nodeFile + "avg_outdeg.csv")
-    val sampling_population: Int =
-      clo.getOrElse("-sampling_population", "10").toInt
-    val sample_selection_prob: Double =
-      clo.getOrElse("-sample_selection_prob", "0.5").toDouble
-    val num_iterations: Int = clo.getOrElse("-num_iterations", "3").toInt
-    val gETypes =
-      clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
+
     val output_base_dir = clo.getOrElse("-base_out_dir","./output/testout/")
 
-    prefix_annotation = clo.getOrElse("-prefix","kdd")
     println("input paramters are :" + clo.toString)
     println("Spark paramters are ", gSC.getConf.getAll.foreach(println))
 
@@ -252,12 +245,7 @@ object STM_NodeArrivalRateMultiType {
       gDebug,
       gSC,
       gSQLContext,
-      sampling,
-      sampling_population,
-      sample_selection_prob,
-      num_iterations,
-      gETypes: Array[Int]
-
+      clo
     )
 
     println("local res 1" + local_res._1)
@@ -675,8 +663,6 @@ object STM_NodeArrivalRateMultiType {
         println(gMotifInfo.toList)
         println("number of edges in last graph", g.edges.count)
         println("number of vertex in last graph", g.vertices.count)
-        //println(g.vertices.collect.toList)
-        //println(g.edges.collect.toList)
       }
     } catch {
       case e: Exception => {
@@ -698,8 +684,10 @@ object STM_NodeArrivalRateMultiType {
     gOffsetAllFWriter.println(
       1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     );
+    gMotifOrbitFWriter.println(1 + "," + 1 + "," + gMotifOrbitInfo.flatten.mkString(","))
     gOffsetAllFWriter.flush()
     gMotifAllProb_IndividualFWriter.flush()
+    gMotifOrbitFWriter.flush()
 
     /*
      * Generate Output
@@ -710,6 +698,7 @@ object STM_NodeArrivalRateMultiType {
       gMotifInfo.flatMap(f0 => f0.map(f1 => f1.toDouble / duration))
     gMotifProbFWriter.println(normMotifProb.mkString("\n"))
     //gMotifProbFile.println("duration in milliseconds=" + duration)
+
 
     val offsetProb: ListBuffer[Long] =
       gOffsetInfo.flatMap(f0 => f0.map(f1 => f1))
@@ -1004,12 +993,31 @@ object STM_NodeArrivalRateMultiType {
     gDebug: Boolean,
     gSC: SparkContext,
     gSQLContext: SQLContext,
-    sampling: Boolean,
-    sampling_population: Int,
-    sample_selection_prob: Double,
-    num_iterations: Int,
-    gETypes: Array[Int]
+    clo:Map[String,String]
   ): (ListBuffer[Double], ListBuffer[Long], Array[Double]) = {
+
+    val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
+
+    val out_json_file_os_path =
+      clo.getOrElse("-out_json_file_os_path", "output-motif.json")
+
+    val sampling: Boolean = clo.getOrElse("-sampling", "false").toBoolean
+
+
+
+    val sampling_population: Int =
+      clo.getOrElse("-sampling_population", "10").toInt
+
+    val sample_selection_prob: Double =
+      clo.getOrElse("-sample_selection_prob", "0.5").toDouble
+
+    val num_iterations: Int = clo.getOrElse("-num_iterations", "3").toInt
+
+    val gETypes =
+      clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
+
+
+    prefix_annotation = clo.getOrElse("-prefix","kdd")
 
     val vRDD = TAGBuilder.get_vertexRDD_from_tagrdd(baseTAG).cache()
     val inputSimpleTAG = baseTAG.get_simple_tagrdd
@@ -1635,6 +1643,49 @@ val avg_out_deg = Array[Double]()
     set_of_v
   }
 
+  def get_motif_orbit_independence(true_mis_set_rdd: RDD[String], num_nonoverlapping_m :Long,
+                                   motif: String) : Unit = {
+    /*
+    triangle" -> "(a)-[e1]->(b); (b)-[e2]->(c); (c)-[e3]->(a)",
+        "triad" -> "(a)-[e1]->(b); (b)-[e2]->(c); (a)-[e3]->(c)",
+        "outdiad" -> "(a)-[e1]->(b); (a)-[e2]->(c)",
+        "indiad" -> "(b)-[e1]->(a); (c)-[e2]->(a)",
+        "loop" -> "(a)-[e1]->(b); (b)-[e2]->(a)",
+        "residualedge" -> "(a)-[e1]->(b)",
+        "selfloop" -> "(a)-[e1]->(b)",
+        "multiedge" -> "(a)-[e1]->(b); (a)-[e2]->(b)",
+        "isolatednode" -> "a",
+        "isolatededge" -> "(a)-[e1]->(b)",
+        "quad" -> "(a)-[e1]->(b); (b)-[e2]->(c); (c)-[e3]->(d); (d)-[e4]->(a)",
+        "outstar" -> "(a)-[e1]->(b); (a)-[e2]->(c); (a)-[e3]->(d)",
+        "instar" -> "(b)-[e1]->(a); (c)-[e2]->(a); (d)-[e3]->(a)",
+        "twoloop" -> "(a)-[e1]->(b); (b)-[e2]->(c); (c)-[e3]->(b); (b)-[e4]->(a)",
+        "inoutdiad" ->
+     */
+    if(motif.equalsIgnoreCase(gAtomicMotifs("triangle")))
+      {
+        // only one orbit
+        val numVOrbit = get_edges_from_mis_motif(true_mis_set_rdd).flatMap(edge=>Iterator(edge._1,
+                                                                                         edge._3))
+          .distinct().count
+        gMotifOrbitInfo += List(numVOrbit.toDouble/num_nonoverlapping_m)
+      }else if(motif.equalsIgnoreCase(gAtomicMotifs("triad")))
+    {
+      val motif_edges = true_mis_set_rdd.map(motif=>motif.split('|'))
+      val orbit_count  : Map[Int,Int] = motif_edges.flatMap(edge_arr => {
+        val e1 = edge_arr(0).split("_")
+        val e2 = edge_arr(1).split("_")
+        val e3 = edge_arr(2).split("_")
+        Iterator((1,e1(0).toInt),(2,e2(0).toInt),(3,e3(0).toInt))
+      }).distinct().map(x => (x._1, 1)).reduceByKey((x, y) => x + y).collect().toMap
+
+      val orbit_independence = List(orbit_count.getOrElse(1,0).toDouble/num_nonoverlapping_m,
+                                    orbit_count.getOrElse(2,0).toDouble/num_nonoverlapping_m,
+                                    orbit_count.getOrElse(3,0).toDouble/num_nonoverlapping_m)
+      gMotifOrbitInfo += orbit_independence
+    }
+  }
+
   def find4EdgNVtxMotifs(
     tmpG: GraphFrame,
     motif: String,
@@ -1800,6 +1851,8 @@ val avg_out_deg = Array[Double]()
     valid_motif_overlap_graph.unpersist(true)
 
     val num_nonoverlapping_m = true_mis_set_rdd.count()
+
+    get_motif_orbit_independence(true_mis_set_rdd,num_nonoverlapping_m,motif)
     val validMotifsArray: RDD[(Int, Int, Int, Long)] = get_edges_from_mis_motif(
       true_mis_set_rdd
     ).cache()
@@ -2105,8 +2158,11 @@ val avg_out_deg = Array[Double]()
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
             .filter("e3.type = " + gETypes(et3))
-            .filter("e1.time < e2.time")
-            .filter("e2.time < e3.time")
+            .filter("a.id < c.id")
+            // reducing candidate tow loop i.e. azc or cza=> pick only azc
+            // time based restriction wont work for this motif type
+            //.filter("e1.time < e2.time")
+            //.filter("e2.time < e3.time")
             .cache()
 
         }else if (symmetry)
@@ -2115,13 +2171,11 @@ val avg_out_deg = Array[Double]()
           .filter("a != b")
           .filter("b != c")
           .filter("c != a")
-          .filter(
-            "e1.type = " +
-              "" + gETypes(et1)
-          )
+          .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
-          .filter("e1.time < e2.time").cache()
+          .filter("e1.time < e2.time")
+          .cache()
           //.filter("e2.time < e3.time").cache()
       else
         tmpG
@@ -2129,12 +2183,10 @@ val avg_out_deg = Array[Double]()
           .filter("a != b")
           .filter("b != c")
           .filter("c != a")
-          .filter(
-            "e1.type = " +
-              "" + gETypes(et1)
-          )
+          .filter("e1.type = " +gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3)).cache()
+          .filter("e3.type = " + gETypes(et3))
+          .cache()
     val selectEdgeArr = Array(
       "e1.src",
       "e1.type",
@@ -2182,15 +2234,15 @@ val avg_out_deg = Array[Double]()
         num_motif_nodes * num_motif_edges
       )
       .cache()
-    if(gHigherGOut == true)
-    {
+    if (gHigherGOut == true) {
       valid_motif_overlap_graph.vertices.collect
         .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
       gHigherGraphFWriter.flush()
       valid_motif_overlap_graph.edges.collect.foreach(
-                                                       e =>
-                                                         gHigherGraphFWriter.println(e.getAs[String](0) + "," + "" + e.getAs[String](1))
-                                                     )
+        e =>
+          gHigherGraphFWriter
+            .println(e.getAs[String](0) + "," + "" + e.getAs[String](1))
+      )
       gHigherGraphFWriter.flush()
     }
     val mis_set: RDD[String] =
