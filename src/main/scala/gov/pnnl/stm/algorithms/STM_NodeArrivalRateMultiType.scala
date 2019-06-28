@@ -1646,44 +1646,79 @@ val avg_out_deg = Array[Double]()
   def get_motif_orbit_independence(true_mis_set_rdd: RDD[String], num_nonoverlapping_m :Long,
                                    motif: String) : Unit = {
     /*
-    triangle" -> "(a)-[e1]->(b); (b)-[e2]->(c); (c)-[e3]->(a)",
-        "triad" -> "(a)-[e1]->(b); (b)-[e2]->(c); (a)-[e3]->(c)",
-        "outdiad" -> "(a)-[e1]->(b); (a)-[e2]->(c)",
-        "indiad" -> "(b)-[e1]->(a); (c)-[e2]->(a)",
-        "loop" -> "(a)-[e1]->(b); (b)-[e2]->(a)",
-        "residualedge" -> "(a)-[e1]->(b)",
-        "selfloop" -> "(a)-[e1]->(b)",
-        "multiedge" -> "(a)-[e1]->(b); (a)-[e2]->(b)",
-        "isolatednode" -> "a",
-        "isolatededge" -> "(a)-[e1]->(b)",
-        "quad" -> "(a)-[e1]->(b); (b)-[e2]->(c); (c)-[e3]->(d); (d)-[e4]->(a)",
-        "outstar" -> "(a)-[e1]->(b); (a)-[e2]->(c); (a)-[e3]->(d)",
-        "instar" -> "(b)-[e1]->(a); (c)-[e2]->(a); (d)-[e3]->(a)",
-        "twoloop" -> "(a)-[e1]->(b); (b)-[e2]->(c); (c)-[e3]->(b); (b)-[e4]->(a)",
-        "inoutdiad" ->
-     */
-    if(motif.equalsIgnoreCase(gAtomicMotifs("triangle")))
-      {
-        // only one orbit
-        val numVOrbit = get_edges_from_mis_motif(true_mis_set_rdd).flatMap(edge=>Iterator(edge._1,
-                                                                                         edge._3))
-          .distinct().count
-        gMotifOrbitInfo += List(numVOrbit.toDouble/num_nonoverlapping_m)
-      }else if(motif.equalsIgnoreCase(gAtomicMotifs("triad")))
+       "residualedge" -> "(a)-[e1]->(b)",: ALWAYS ONE SO DONT WRITE
+       "selfloop" -> "(a)-[e1]->(b)",ALWAYS ONE SO DONT WRITE
+       "multiedge" -> "(a)-[e1]->(b); (a)-[e2]->(b)",
+       "isolatednode" -> "a", ALWAYS ONE SO DONT WRITE
+       "isolatededge" -> "(a)-[e1]->(b)", ALWAYS (1,1) SO DONT WRITE
+    */
+    if(motif.equalsIgnoreCase(gAtomicMotifs("triangle")) ||
+       motif.equalsIgnoreCase(gAtomicMotifs("quad")) ||
+       motif.equalsIgnoreCase(gAtomicMotifs("loop")))
     {
-      val motif_edges = true_mis_set_rdd.map(motif=>motif.split('|'))
-      val orbit_count  : Map[Int,Int] = motif_edges.flatMap(edge_arr => {
-        val e1 = edge_arr(0).split("_")
-        val e2 = edge_arr(1).split("_")
-        val e3 = edge_arr(2).split("_")
-        Iterator((1,e1(0).toInt),(2,e2(0).toInt),(3,e3(0).toInt))
-      }).distinct().map(x => (x._1, 1)).reduceByKey((x, y) => x + y).collect().toMap
+      // only one orbit
+      val numVOrbit = get_edges_from_mis_motif(true_mis_set_rdd).map(edge=>edge._1)
+        .distinct().count
+      gMotifOrbitInfo += List(numVOrbit.toDouble/num_nonoverlapping_m)
+    }else if(motif.equalsIgnoreCase(gAtomicMotifs("triad")))
+          {
+            val motif_edges = true_mis_set_rdd.map(motif=>motif.split('|'))
+            val orbit_count  : Map[Int,Int] = motif_edges.flatMap(edge_arr => {
+              val e1 = edge_arr(0).split("_")
+              val e2 = edge_arr(1).split("_")
+              val e3 = edge_arr(2).split("_")
+              Iterator((1,e1(0).toInt),(2,e2(0).toInt),(3,e3(0).toInt))
+            }).distinct().map(x => (x._1, 1)).reduceByKey((x, y) => x + y).collect().toMap
 
-      val orbit_independence = List(orbit_count.getOrElse(1,0).toDouble/num_nonoverlapping_m,
-                                    orbit_count.getOrElse(2,0).toDouble/num_nonoverlapping_m,
-                                    orbit_count.getOrElse(3,0).toDouble/num_nonoverlapping_m)
-      gMotifOrbitInfo += orbit_independence
-    }
+            val orbit_independence = List(orbit_count.getOrElse(1,0).toDouble/num_nonoverlapping_m,
+                                          orbit_count.getOrElse(2,0).toDouble/num_nonoverlapping_m,
+                                          orbit_count.getOrElse(3,0).toDouble/num_nonoverlapping_m)
+            gMotifOrbitInfo += orbit_independence
+          }
+    else if(motif.equalsIgnoreCase(gAtomicMotifs("outdiad")) ||
+             motif.equalsIgnoreCase(gAtomicMotifs("indiad")) ||
+             motif.equalsIgnoreCase(gAtomicMotifs("twoloop")))
+          {
+            val motif_edges = true_mis_set_rdd.map(motif=>motif.split('|'))
+            val orbit_count  : Map[Int,Int] = motif_edges.flatMap(edge_arr => {
+              val e1 = edge_arr(0).split("_")
+              val e2 = edge_arr(1).split("_")
+              //there are two orbits, a and b|c
+              Iterator((1,e1(0).toInt),(2,e1(3).toInt),(2,e2(1).toInt))
+            }).distinct().map(x => (x._1, 1)).reduceByKey((x, y) => x + y).collect().toMap
+            val orbit_independence = List(orbit_count.getOrElse(1,0).toDouble/num_nonoverlapping_m,
+                                          orbit_count.getOrElse(2,0).toDouble/num_nonoverlapping_m)
+            gMotifOrbitInfo += orbit_independence
+          }
+          else if(motif.equalsIgnoreCase(gAtomicMotifs("inoutdiad")) )
+               {
+                 val motif_edges = true_mis_set_rdd.map(motif=>motif.split('|'))
+                 val orbit_count  : Map[Int,Int] = motif_edges.flatMap(edge_arr => {
+                   val e1 = edge_arr(0).split("_")
+                   val e2 = edge_arr(1).split("_")
+                   //there are three orbits, a,b,c
+                   Iterator((1,e1(0).toInt),(2,e1(3).toInt),(3,e2(2).toInt))
+                 }).distinct().map(x => (x._1, 1)).reduceByKey((x, y) => x + y).collect().toMap
+                 val orbit_independence = List(orbit_count.getOrElse(1,0).toDouble/num_nonoverlapping_m,
+                                               orbit_count.getOrElse(2,0).toDouble/num_nonoverlapping_m,
+                                               orbit_count.getOrElse(3,0).toDouble/num_nonoverlapping_m)
+                 gMotifOrbitInfo += orbit_independence
+               }
+    else if(motif.equalsIgnoreCase(gAtomicMotifs("instar")) ||
+            motif.equalsIgnoreCase(gAtomicMotifs("outstar")))
+         {
+           val motif_edges = true_mis_set_rdd.map(motif=>motif.split('|'))
+           val orbit_count  : Map[Int,Int] = motif_edges.flatMap(edge_arr => {
+             val e1 = edge_arr(0).split("_")
+             val e2 = edge_arr(1).split("_")
+             val e3 = edge_arr(2).split("_")
+             //there are two orbits, a and b|c|d
+             Iterator((1,e1(0).toInt),(2,e1(3).toInt),(2,e2(3).toInt),(2,e3(3).toInt))
+           }).distinct().map(x => (x._1, 1)).reduceByKey((x, y) => x + y).collect().toMap
+           val orbit_independence = List(orbit_count.getOrElse(1,0).toDouble/num_nonoverlapping_m,
+                                         orbit_count.getOrElse(2,0).toDouble/num_nonoverlapping_m)
+           gMotifOrbitInfo += orbit_independence
+         }
   }
 
   def find4EdgNVtxMotifs(
@@ -2255,6 +2290,9 @@ val avg_out_deg = Array[Double]()
     valid_motif_overlap_graph.unpersist(true)
 
     val num_nonoverlap_motifs = true_mis_set_rdd.count()
+    get_motif_orbit_independence(true_mis_set_rdd,num_nonoverlap_motifs,motif)
+
+
     val validMotifsArray: RDD[(Int, Int, Int, Long)] = get_edges_from_mis_motif(
       true_mis_set_rdd
     ).cache()
@@ -2446,6 +2484,7 @@ val avg_out_deg = Array[Double]()
      */
     val true_mis_set_rdd = get_local_NO_after_MIS(mis_set, gSC).cache()
     val num_nonoverlapping_m = true_mis_set_rdd.count()
+    get_motif_orbit_independence(true_mis_set_rdd,num_nonoverlapping_m,motif)
 
     val validMotifsArray: RDD[(Int, Int, Int, Long)] = get_edges_from_mis_motif(
       true_mis_set_rdd
