@@ -2138,6 +2138,8 @@ val avg_out_deg = Array[Double]()
   ): RDD[(Int, Int, Int, Long)] = {
 
     var reuse_node_info_star = Map[Int, Int]()
+    for (i <- 0 to num_motif_nodes)
+      reuse_node_info_star += (i -> 0)
     var avg_reuse_temporal_offset_info_star = ArrayBuffer[Long]()
     val overlappingMotifs =
       if (num_motif_nodes == 4)
