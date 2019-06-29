@@ -20,22 +20,24 @@ object STMConf {
       "residualedge" -> "(a)-[e1]->(b)"
     )
 
-    val atomocMotifKey: Map[Int, String] =
-      Map(
-        1 -> "isolatednode",
-        2 -> "isolatededge",
-        3 -> "multiedge",
-        4 -> "selfloop",
-        5 -> "triangle",
-        6 -> "triad",
-        7 -> "twoloop",
-        8 -> "quad",
-        9 -> "loop",
-        10 -> "outstar",
-        11 -> "instar",
-        12 -> "outdiad",
-        13 -> "indiad",
-        14 -> "inoutdiad",
-        15 -> "residualedge"
-      )
+  val atomocMotifKeyToName: Map[Int, String] =
+    Map(
+      1 -> "isolatednode",
+      2 -> "isolatededge",
+      3 -> "multiedge",
+      4 -> "selfloop",
+      5 -> "triangle",
+      6 -> "triad",
+      7 -> "twoloop",
+      8 -> "quad",
+      9 -> "loop",
+      10 -> "outstar",
+      11 -> "instar",
+      12 -> "outdiad",
+      13 -> "indiad",
+      14 -> "inoutdiad",
+      15 -> "residualedge"
+    )
+  val atomocMotifNameToKey: Map[String, Int] =
+    for ((k, v) <- atomocMotifKeyToName) yield (v, k)
 }
