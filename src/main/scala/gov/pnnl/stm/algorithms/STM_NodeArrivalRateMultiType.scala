@@ -20,7 +20,7 @@ import gov.pnnl.builders.{TAGBuilder}
 import gov.pnnl.datamodel.GlobalTypes._
 import gov.pnnl.stm.conf.STMConf
 import org.apache.commons.io.filefilter.RegexFileFilter
-import org.apache.spark.sql.functions.{col }
+import org.apache.spark.sql.functions.{col}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
@@ -39,7 +39,6 @@ object STM_NodeArrivalRateMultiType {
    */
 
   println("######OBJECT CREATED ; STM_NodeArrivalRateMultiType ######")
-  var prefix_annotation = "kdd"
   val t1 = System.nanoTime()
   val gMotifInfo = ListBuffer.empty[List[Int]]
   val gMotifOrbitInfo = ListBuffer.empty[List[Double]]
@@ -86,7 +85,6 @@ object STM_NodeArrivalRateMultiType {
   val gVertexIndependenceFWriter = new PrintWriter(
     new FileWriter(gVertexIndependenceFile, true)
   )
-
   /*
 
    * construct motif from edges to compute their information content
@@ -107,7 +105,7 @@ object STM_NodeArrivalRateMultiType {
   val gDebug = true
   val gHigherGOut = false
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
-
+  var prefix_annotation = "kdd"
   /*
    * if we define gETypes here as "var" and then update it's value from command line. The new value does not reach to
    * the executor becuase driver has already sent the value to executor once and it does not -resend it when the
@@ -129,15 +127,12 @@ object STM_NodeArrivalRateMultiType {
   var gVBirthTime: scala.collection.mutable.Map[Int, Long] =
     scala.collection.mutable.Map.empty
 
-
   def writeAvgOutDegFile(avg_out_deg_fname: String,
                          avg_out_deg: Array[Double]): Unit = {
     val fwriter = new PrintWriter(new File(avg_out_deg_fname))
     fwriter.println(avg_out_deg.mkString("\n"))
     fwriter.flush()
   }
-
-
 
   /**
     * main function of the object
@@ -250,7 +245,6 @@ object STM_NodeArrivalRateMultiType {
     val gETypes =
       clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
 
-
     val inputSimpleTAG = baseTAG.get_simple_tagrdd
     /*
      * Broacast the vertext arrival times to each cluster-node because it us used in look-up as local Map
@@ -274,13 +268,13 @@ object STM_NodeArrivalRateMultiType {
     val avg_out_deg = Array[Double]()
     if (sampling) {
       val res = approx_STM(
-                            gDebug,
-                            sampling_population,
-                            sample_selection_prob,
-                            num_iterations,
-                            gETypes,
-                            inputSimpleTAG
-                          )
+        gDebug,
+        sampling_population,
+        sample_selection_prob,
+        num_iterations,
+        gETypes,
+        inputSimpleTAG
+      )
       (res._1, res._2, avg_out_deg)
     } else {
       val res = complete_STM(gDebug, gETypes, inputSimpleTAG)
@@ -290,7 +284,7 @@ object STM_NodeArrivalRateMultiType {
   }
 
   def findIsolatedVtx(g: GraphFrame,
-    motifName: String,
+                      motifName: String,
                       gETypes: Array[eType]): GraphFrame = {
 
     if (gDebug) {
@@ -313,10 +307,7 @@ object STM_NodeArrivalRateMultiType {
         .dropIsolatedVertices()
         .vertices
         .rdd
-        .map(
-          v =>
-            v.getAs[Int](0)
-        )
+        .map(v => v.getAs[Int](0))
         .cache()
 
     val iso_v_cnt = isolated_v.count
@@ -350,7 +341,7 @@ object STM_NodeArrivalRateMultiType {
   }
 
   def findIsolatedEdg(g: GraphFrame,
-    motifName: String,
+                      motifName: String,
                       gETypes: Array[eType]): GraphFrame = {
 
     val spark = SparkSession.builder().getOrCreate()
@@ -370,7 +361,7 @@ object STM_NodeArrivalRateMultiType {
     val v_deg_1_id = v_deg_1.collect().map(row => get_row_src(row))
     val v_deg_1_exc_local = sc.broadcast(v_deg_1_id).value
     val iso_edgs = g
-        .find(gAtomicMotifs(motifName))
+      .find(gAtomicMotifs(motifName))
       .filter(
         col("a.id").isin(v_deg_1_exc_local: _*)
           && col("b.id").isin(v_deg_1_exc_local: _*)
@@ -937,8 +928,6 @@ object STM_NodeArrivalRateMultiType {
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
-
-
   /**
     * get_vertex_arrival_time compute vertex birth time and return a RDD back
     *
@@ -1179,7 +1168,10 @@ object STM_NodeArrivalRateMultiType {
         println("graph size e", g.edges.count)
       }
       val overlappingMotifs =
-        tmpG.find(gAtomicMotifs(motifName)).filter("a == b").filter("e1.type = " + gETypes(et1))
+        tmpG
+          .find(gAtomicMotifs(motifName))
+          .filter("a == b")
+          .filter("e1.type = " + gETypes(et1))
       val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
       val selctedMotifEdges: DataFrame = overlappingMotifs
         .select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -1528,7 +1520,7 @@ object STM_NodeArrivalRateMultiType {
 
   def get_motif_orbit_independence(true_mis_set_rdd: RDD[String],
                                    num_nonoverlapping_m: Long,
-    motifName: String): Unit = {
+                                   motifName: String): Unit = {
     /*
        "residualedge" -> "(a)-[e1]->(b)",: ALWAYS ONE SO DONT WRITE
        "selfloop" -> "(a)-[e1]->(b)",ALWAYS ONE SO DONT WRITE
@@ -1538,7 +1530,7 @@ object STM_NodeArrivalRateMultiType {
      */
     if (motifName.equalsIgnoreCase("triangle") ||
         motifName.equalsIgnoreCase("quad") ||
-                                   motifName.equalsIgnoreCase("loop")) {
+        motifName.equalsIgnoreCase("loop")) {
       // only one orbit
       val numVOrbit = get_edges_from_mis_motif(true_mis_set_rdd)
         .map(edge => edge._1)
@@ -1810,7 +1802,11 @@ object STM_NodeArrivalRateMultiType {
 
     val num_nonoverlapping_m = true_mis_set_rdd.count()
 
-    get_motif_orbit_independence(true_mis_set_rdd, num_nonoverlapping_m, motifName)
+    get_motif_orbit_independence(
+      true_mis_set_rdd,
+      num_nonoverlapping_m,
+      motifName
+    )
     val validMotifsArray: RDD[(Int, Int, Int, Long)] =
       get_edges_from_mis_motif(true_mis_set_rdd).cache()
 
@@ -2247,7 +2243,11 @@ object STM_NodeArrivalRateMultiType {
     valid_motif_overlap_graph.unpersist(true)
 
     val num_nonoverlap_motifs = true_mis_set_rdd.count()
-    get_motif_orbit_independence(true_mis_set_rdd, num_nonoverlap_motifs, motifName)
+    get_motif_orbit_independence(
+      true_mis_set_rdd,
+      num_nonoverlap_motifs,
+      motifName
+    )
 
     val validMotifsArray: RDD[(Int, Int, Int, Long)] =
       get_edges_from_mis_motif(true_mis_set_rdd).cache()
@@ -2341,7 +2341,7 @@ object STM_NodeArrivalRateMultiType {
   }
 
   def find2EdgNVtxMotifs(tmpG: GraphFrame,
-    motifName: String,
+                         motifName: String,
                          symmetry: Boolean = false,
                          et1: eType,
                          et2: eType,
@@ -2457,7 +2457,11 @@ object STM_NodeArrivalRateMultiType {
      */
     val true_mis_set_rdd = get_local_NO_after_MIS(mis_set, sc).cache()
     val num_nonoverlapping_m = true_mis_set_rdd.count()
-    get_motif_orbit_independence(true_mis_set_rdd, num_nonoverlapping_m, motifName)
+    get_motif_orbit_independence(
+      true_mis_set_rdd,
+      num_nonoverlapping_m,
+      motifName
+    )
 
     val validMotifsArray: RDD[(Int, Int, Int, Long)] = get_edges_from_mis_motif(
       true_mis_set_rdd
@@ -2512,7 +2516,7 @@ object STM_NodeArrivalRateMultiType {
   }
 
   def findDyad(g: GraphFrame,
-    motifName: String,
+               motifName: String,
                symmetry: Boolean = false,
                gETypes: Array[Int],
                num_motif_nodes: Int,
@@ -2605,7 +2609,7 @@ object STM_NodeArrivalRateMultiType {
     * @return
     */
   def findResidualEdg(g: GraphFrame,
-    motifName: String,
+                      motifName: String,
                       gETypes: Array[Int]): GraphFrame = {
 
     if (gDebug) {
@@ -2617,7 +2621,10 @@ object STM_NodeArrivalRateMultiType {
     var tmpG = g
     for (et1 <- gETypes.indices) {
       val overlappingMotifs =
-        tmpG.find(gAtomicMotifs(motifName)).filter("a != b").filter("e1.type = " + gETypes(et1))
+        tmpG
+          .find(gAtomicMotifs(motifName))
+          .filter("a != b")
+          .filter("e1.type = " + gETypes(et1))
       val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
       val selctedMotifEdges = overlappingMotifs
         .select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -2705,69 +2712,69 @@ object STM_NodeArrivalRateMultiType {
 //  val out_motif_instance_file = new PrintWriter(
 //    (new File("out_motif_instance.txt"))
 //  )
-def moveFilesToOutdir(output_base_dir: String): Unit = {
-  /*
-   * Move all files to output dir
-   */
-  def moveFileInner(srcFileObj: File): Unit = {
-    import java.nio.file.Files
-    Files.move(
-                Paths.get(srcFileObj.getAbsolutePath),
-                Paths.get(output_base_dir + "/" + srcFileObj.getName)
-              )
-  }
-  val out_dir_base = new File(output_base_dir)
-  if (!out_dir_base.exists())
-    out_dir_base.mkdirs()
-
-  try {
-    moveFileInner(gMotifProbFile)
-    moveFileInner(gMotifAllProbFile)
-    moveFileInner(gMotifAllProbFile_Individual)
-    moveFileInner(gOffsetFile)
-    moveFileInner(gOffsetAllFile)
-    moveFileInner(gVertexBirthFile)
-    moveFileInner(gMotifIndependenceFile)
-    moveFileInner(gVertexIndependenceFile)
-    moveFileInner(gHigherGraphFile)
-
-    val directory = new File(".")
-    println("curr dir is ", directory.getAbsolutePath)
-    val pattern = "^.*" + t1 + ".*.txt$"
-    System.out.println("\nFiles that match regular expression: " + pattern)
-    val filter: FileFilter = new RegexFileFilter("^.*" + t1 + ".*.txt$")
-    val files = directory.listFiles(filter)
-
-    println("Files to move are ", files.toList)
-    files.foreach(afile => moveFileInner(afile))
-  } catch {
-    case e: Exception => {
-      println("\nERROR: Failed to move files = ")
-      val sw = new StringWriter
-      e.printStackTrace(new PrintWriter(sw))
-      println("\n Exception is  " + sw.toString())
+  def moveFilesToOutdir(output_base_dir: String): Unit = {
+    /*
+     * Move all files to output dir
+     */
+    def moveFileInner(srcFileObj: File): Unit = {
+      import java.nio.file.Files
+      Files.move(
+        Paths.get(srcFileObj.getAbsolutePath),
+        Paths.get(output_base_dir + "/" + srcFileObj.getName)
+      )
     }
+    val out_dir_base = new File(output_base_dir)
+    if (!out_dir_base.exists())
+      out_dir_base.mkdirs()
+
+    try {
+      moveFileInner(gMotifProbFile)
+      moveFileInner(gMotifAllProbFile)
+      moveFileInner(gMotifAllProbFile_Individual)
+      moveFileInner(gOffsetFile)
+      moveFileInner(gOffsetAllFile)
+      moveFileInner(gVertexBirthFile)
+      moveFileInner(gMotifIndependenceFile)
+      moveFileInner(gVertexIndependenceFile)
+      moveFileInner(gHigherGraphFile)
+
+      val directory = new File(".")
+      println("curr dir is ", directory.getAbsolutePath)
+      val pattern = "^.*" + t1 + ".*.txt$"
+      System.out.println("\nFiles that match regular expression: " + pattern)
+      val filter: FileFilter = new RegexFileFilter("^.*" + t1 + ".*.txt$")
+      val files = directory.listFiles(filter)
+
+      println("Files to move are ", files.toList)
+      files.foreach(afile => moveFileInner(afile))
+    } catch {
+      case e: Exception => {
+        println("\nERROR: Failed to move files = ")
+        val sw = new StringWriter
+        e.printStackTrace(new PrintWriter(sw))
+        println("\n Exception is  " + sw.toString())
+      }
+    }
+
   }
 
-}
-
-def write_motif_independence(overlapping_cnt: Long,
-    non_overlapping_cnt: Long): Unit = {
+  def write_motif_independence(overlapping_cnt: Long,
+                               non_overlapping_cnt: Long): Unit = {
     // write motif uniqueness file
     gMotifIndependenceFWriter.println(
-                                       overlapping_cnt + "," +
-                                       non_overlapping_cnt + "," +
-                                       non_overlapping_cnt.toDouble / overlapping_cnt.toDouble
-                                     )
+      overlapping_cnt + "," +
+        non_overlapping_cnt + "," +
+        non_overlapping_cnt.toDouble / overlapping_cnt.toDouble
+    )
     gMotifIndependenceFWriter.flush()
   }
 
-def write_vertex_independence(num_v_nonoverlapping: Long,
-    num_v_max_possible: Long) = {
+  def write_vertex_independence(num_v_nonoverlapping: Long,
+                                num_v_max_possible: Long) = {
     gVertexIndependenceFWriter.println(
-                                        num_v_nonoverlapping + "," + num_v_max_possible + "," +
-                                        num_v_nonoverlapping.toDouble / num_v_max_possible.toDouble
-                                      )
+      num_v_nonoverlapping + "," + num_v_max_possible + "," +
+        num_v_nonoverlapping.toDouble / num_v_max_possible.toDouble
+    )
     gVertexIndependenceFWriter.flush()
   }
 }
