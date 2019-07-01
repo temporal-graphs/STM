@@ -85,6 +85,18 @@ object STM_NodeArrivalRateMultiType {
   val gVertexIndependenceFWriter = new PrintWriter(
     new FileWriter(gVertexIndependenceFile, true)
   )
+  val gOrbitVertexAssociationFile = new File(
+    t1 + "Orbit_Association_" + prefix_annotation + ".txt"
+  )
+  val gOrbitVertexAssociationFWriter = new PrintWriter(
+    new FileWriter(gOrbitVertexAssociationFile, true)
+  )
+  val gMotifVertexAssociationFile = new File(
+    t1 + "Motif_Association_" + prefix_annotation + ".txt"
+  )
+  val gMotifVertexAssociationFWriter = new PrintWriter(
+    new FileWriter(gMotifVertexAssociationFile, true)
+  )
   /*
 
    * construct motif from edges to compute their information content
@@ -105,7 +117,13 @@ object STM_NodeArrivalRateMultiType {
   val gDebug = true
   val gHigherGOut = false
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
+  val gMotifKeyToName = STMConf.atomocMotifKeyToName
+  val gMotifNameToKey = STMConf.atomocMotifNameToKey
+  val gMotifNameToOrbitKeys = STMConf.motifNameToOrbitKeys
+
   var prefix_annotation = "kdd"
+  var currItrID = 1
+  var currWinID = 1
   /*
    * if we define gETypes here as "var" and then update it's value from command line. The new value does not reach to
    * the executor becuase driver has already sent the value to executor once and it does not -resend it when the
@@ -374,7 +392,7 @@ object STM_NodeArrivalRateMultiType {
 
     val tmi_edges_rdd: RDD[(Int, Int, Int, Long)] =
       selctedMotifEdges.rdd.map(row => get_edge_from_row(row))
-    write_motif_vertex_association_file(tmi_edges_rdd, "isolated_E")
+    write_motif_vertex_association_file(tmi_edges_rdd,motifName)
 
     val newe = g.edges.except(selctedMotifEdges)
     val newv = g.vertices.except(v_deg_1)
@@ -437,10 +455,11 @@ object STM_NodeArrivalRateMultiType {
               if (validMotifsArray.isEmpty)
                 break
 
-              if (motifName.equalsIgnoreCase("quad"))
-                write_motif_vertex_association_file(validMotifsArray, "quad")
-              else if (motifName.equalsIgnoreCase("twoloop"))
-                write_motif_vertex_association_file(validMotifsArray, "twoloop")
+              write_motif_vertex_association_file(validMotifsArray,motifName)
+//              if (motifName.equalsIgnoreCase("quad"))
+//                write_motif_vertex_association_file(validMotifsArray, "quad")
+//              else if (motifName.equalsIgnoreCase("twoloop"))
+//                write_motif_vertex_association_file(validMotifsArray, "twoloop")
 
               val uniqeEDF = sqlc
                 .createDataFrame(validMotifsArray)
@@ -695,13 +714,16 @@ object STM_NodeArrivalRateMultiType {
 
     var gMotifInfo_global = ListBuffer.empty[Double]
     var gOffsetInfo_global = ListBuffer.empty[Long]
+
     for (itr <- 0 to num_iterations - 1) {
+      currItrID = itr
       var gMotifInfo_itr_local = ListBuffer.empty[Double]
       var gOffsetInfo_itr_local = ListBuffer.empty[Long]
       var num_w_in_sampling = 0
       for (i <- 0 to num_windows - 1) {
+        currWinID = i
         val rn = scala.util.Random
-        if ((rn.nextDouble() < sample_selection_prob) || i == 0) //forcing i==0 so that atleast one is picked
+        if ((rn.nextDouble() < sample_selection_prob) || currWinID == 0) //forcing i==0 so that atleast one is picked
           {
             println(" i is " + i)
             gVertexIndependenceFWriter.println(
@@ -1249,7 +1271,7 @@ object STM_NodeArrivalRateMultiType {
    */
   def write_motif_vertex_association_file(
     validMotifsArray: RDD[(Int, Int, Int, Long)],
-    filename: String
+    motifName:String
   ): Unit = {
     val multi_edge_nodes = validMotifsArray
       .flatMap(e => {
@@ -1257,16 +1279,23 @@ object STM_NodeArrivalRateMultiType {
       })
       .distinct()
       .collect()
-    val filepath = t1 + "Motif_Vertex_Association_" + filename + prefix_annotation + ".txt"
-    println(
-      "Writing file ",
-      t1 + "Motif_Vertex_Association_" + filename + prefix_annotation + ".txt"
+//    val filepath = t1 + "Motif_Vertex_Association_" + filename + prefix_annotation + ".txt"
+//    println(
+//      "Writing file ",
+//      t1 + "Motif_Vertex_Association_" + filename + prefix_annotation + ".txt"
+//    )
+//    val motif_v_file = new PrintWriter(new FileWriter(filepath, true))
+//    //adding this line so that we know the start of the write in case of sampling=true
+//    motif_v_file.println("NodeID")
+//    multi_edge_nodes.foreach(v => motif_v_file.println(v))
+//    motif_v_file.flush()
+
+    gMotifVertexAssociationFWriter.println(
+      currItrID + "," +
+        currItrID +
+        gMotifNameToKey(motifName) + "," +
+        multi_edge_nodes.mkString(",")
     )
-    val motif_v_file = new PrintWriter(new FileWriter(filepath, true))
-    //adding this line so that we know the start of the write in case of sampling=true
-    motif_v_file.println("NodeID")
-    multi_edge_nodes.foreach(v => motif_v_file.println(v))
-    motif_v_file.flush()
   }
 
   def findTriad(g: GraphFrame,
@@ -1317,14 +1346,15 @@ object STM_NodeArrivalRateMultiType {
             if (validMotifsArray.isEmpty)
               break
 
-            if (motifName.equalsIgnoreCase("outstar"))
-              write_motif_vertex_association_file(validMotifsArray, "outstar")
-            else if (motifName.equalsIgnoreCase("instar"))
-              write_motif_vertex_association_file(validMotifsArray, "instar")
-            else if (motifName.equalsIgnoreCase("triangle"))
-              write_motif_vertex_association_file(validMotifsArray, "triangle")
-            else if (motifName.equalsIgnoreCase("triad"))
-              write_motif_vertex_association_file(validMotifsArray, "triad")
+            write_motif_vertex_association_file(validMotifsArray, motifName)
+//            if (motifName.equalsIgnoreCase("outstar"))
+//              write_motif_vertex_association_file(validMotifsArray, "outstar")
+//            else if (motifName.equalsIgnoreCase("instar"))
+//              write_motif_vertex_association_file(validMotifsArray, "instar")
+//            else if (motifName.equalsIgnoreCase("triangle"))
+//              write_motif_vertex_association_file(validMotifsArray, "triangle")
+//            else if (motifName.equalsIgnoreCase("triad"))
+//              write_motif_vertex_association_file(validMotifsArray, "triad")
 
             tmpG = get_new_graph_except_processed_motifs_edges(
               tmpG,
@@ -1518,7 +1548,7 @@ object STM_NodeArrivalRateMultiType {
     set_of_v
   }
 
-  def get_motif_orbit_independence(true_mis_set_rdd: RDD[String],
+  def writeOrbitIndependence_VertexAssociation(true_mis_set_rdd: RDD[String],
                                    num_nonoverlapping_m: Long,
                                    motifName: String): Unit = {
     /*
@@ -1539,17 +1569,34 @@ object STM_NodeArrivalRateMultiType {
       gMotifOrbitInfo += List(numVOrbit.toDouble / num_nonoverlapping_m)
     } else if (motifName.equalsIgnoreCase("triad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_count: Map[Int, Int] = motif_edges
+      val orbit_vertex :RDD[(Int,Set[Int])]  = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           val e3 = edge_arr(2).split("_")
-          Iterator((1, e1(0).toInt), (2, e2(0).toInt), (3, e3(0).toInt))
+          Iterator((1, Set(e1(0).toInt)), (2, Set(e2(0).toInt)), (3, Set(e3(0).toInt)))
         })
         .distinct()
-        .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y)
-        .collect()
+
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) =>  x++y).collect
+
+      /*
+      * Write orbit_vertex_association file
+       */
+      val orbitIDMapMotif = gMotifNameToOrbitKeys(motifName)
+      orbit_vertex_asso.foreach(ova => {
+        gOrbitVertexAssociationFWriter.println(
+          currItrID + "," + currWinID
+            + orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
+        )
+      })
+      gOrbitVertexAssociationFWriter.flush()
+
+      /*
+       * Write orbit independence
+       */
+      val orbit_count: Map[Int, Int] = orbit_vertex_asso
+      .map(x => (x._1, x._2.size))
         .toMap
 
       val orbit_independence = List(
@@ -1802,7 +1849,7 @@ object STM_NodeArrivalRateMultiType {
 
     val num_nonoverlapping_m = true_mis_set_rdd.count()
 
-    get_motif_orbit_independence(
+    writeOrbitIndependence_VertexAssociation(
       true_mis_set_rdd,
       num_nonoverlapping_m,
       motifName
@@ -2243,7 +2290,7 @@ object STM_NodeArrivalRateMultiType {
     valid_motif_overlap_graph.unpersist(true)
 
     val num_nonoverlap_motifs = true_mis_set_rdd.count()
-    get_motif_orbit_independence(
+    writeOrbitIndependence_VertexAssociation(
       true_mis_set_rdd,
       num_nonoverlap_motifs,
       motifName
@@ -2457,7 +2504,7 @@ object STM_NodeArrivalRateMultiType {
      */
     val true_mis_set_rdd = get_local_NO_after_MIS(mis_set, sc).cache()
     val num_nonoverlapping_m = true_mis_set_rdd.count()
-    get_motif_orbit_independence(
+    writeOrbitIndependence_VertexAssociation(
       true_mis_set_rdd,
       num_nonoverlapping_m,
       motifName
@@ -2542,15 +2589,15 @@ object STM_NodeArrivalRateMultiType {
           num_motif_nodes,
           num_motif_edges
         ).cache()
-
-        if (motifName.equalsIgnoreCase("loop"))
-          write_motif_vertex_association_file(validMotifsArray, "loop")
-        else if (motifName.equalsIgnoreCase("outdiad"))
-          write_motif_vertex_association_file(validMotifsArray, "outdyad")
-        else if (motifName.equalsIgnoreCase("indiad"))
-          write_motif_vertex_association_file(validMotifsArray, "indyad")
-        else if (motifName.equalsIgnoreCase("inoutdiad"))
-          write_motif_vertex_association_file(validMotifsArray, "inoutdyad")
+        write_motif_vertex_association_file(validMotifsArray,motifName)
+//        if (motifName.equalsIgnoreCase("loop"))
+//          write_motif_vertex_association_file(validMotifsArray, "loop")
+//        else if (motifName.equalsIgnoreCase("outdiad"))
+//          write_motif_vertex_association_file(validMotifsArray, "outdyad")
+//        else if (motifName.equalsIgnoreCase("indiad"))
+//          write_motif_vertex_association_file(validMotifsArray, "indyad")
+//        else if (motifName.equalsIgnoreCase("inoutdiad"))
+//          write_motif_vertex_association_file(validMotifsArray, "inoutdyad")
 
         // Dont need to compute motif structure to update dataframe. Just create a big
         // array of all unique edges and use that
