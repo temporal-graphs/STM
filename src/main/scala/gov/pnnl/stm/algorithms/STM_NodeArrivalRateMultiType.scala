@@ -40,6 +40,7 @@ object STM_NodeArrivalRateMultiType {
 
   println("######OBJECT CREATED ; STM_NodeArrivalRateMultiType ######")
   val t1 = System.nanoTime()
+  val prefix_annotation = "kdd"
   val gMotifInfo = ListBuffer.empty[List[Int]]
   val gMotifOrbitInfo = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
@@ -121,7 +122,7 @@ object STM_NodeArrivalRateMultiType {
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
   val gMotifNameToOrbitKeys = STMConf.motifNameToOrbitKeys
 
-  var prefix_annotation = "kdd"
+
   var currItrID = 1
   var currWinID = 1
   /*
@@ -1586,7 +1587,7 @@ object STM_NodeArrivalRateMultiType {
       val orbitIDMapMotif = gMotifNameToOrbitKeys(motifName)
       orbit_vertex_asso.foreach(ova => {
         gOrbitVertexAssociationFWriter.println(
-          currItrID + "," + currWinID
+          currItrID + "," + currWinID + "," +
             + orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
         )
       })
