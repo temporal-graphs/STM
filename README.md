@@ -4,3 +4,5 @@ Many domains such as communication, citation, procurement, biology, social media
 can be modeled as a set of entities and relationships among them. 
 Temporal networks are a specialization of general networks where temporal evolution of the system is as important to 
 understand as the structure of entities and relationships. 
+
+Please contact Sumit.Purohit@pnnl.gov for any question.
