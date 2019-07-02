@@ -303,7 +303,7 @@ object STM_NodeArrivalRateMultiType {
     //broadcast the deg dist. we use it for other motifs too.
     val v_cnt = g.vertices.count()
 
-    var isolated_v = g.degrees
+    var isolated_v  = g.degrees
       .filter(v => v.getAs[Int](1) == 0)
       .rdd
       .map(v => v.getAs[Int](0))
@@ -322,17 +322,12 @@ object STM_NodeArrivalRateMultiType {
     val iso_v_cnt = isolated_v.count
     println("iso count is ", iso_v_cnt)
 
-    // Write iso_v association file
-    val iso_v_file =
-      new PrintWriter(
-        new FileWriter(
-          t1 + "Motif_Vertex_Association_ISO_V_" + prefix_annotation +
-            ".txt",
-          true
-        )
-      )
-    isolated_v.collect().foreach((v => iso_v_file.println(v)))
-    iso_v_file.flush()
+    gMotifVertexAssociationFWriter.println(
+      currItrID + "," +
+        currItrID + "," +
+        gMotifNameToKey(motifName) + "," +
+        isolated_v.collect().mkString(",")
+    )
 
     write_vertex_independence(iso_v_cnt, iso_v_cnt)
 
@@ -1264,7 +1259,7 @@ object STM_NodeArrivalRateMultiType {
     validMotifsArray: RDD[(Int, Int, Int, Long)],
     motifName:String
   ): Unit = {
-    val multi_edge_nodes = validMotifsArray
+    val multi_edge_nodes :Array[Int] = validMotifsArray
       .flatMap(e => {
         Iterator(e._1, e._3)
       })
@@ -1283,7 +1278,7 @@ object STM_NodeArrivalRateMultiType {
 
     gMotifVertexAssociationFWriter.println(
       currItrID + "," +
-        currItrID +
+        currItrID + "," +
         gMotifNameToKey(motifName) + "," +
         multi_edge_nodes.mkString(",")
     )
