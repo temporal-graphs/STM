@@ -98,17 +98,7 @@ object STM_NodeArrivalRateMultiType {
   val gMotifVertexAssociationFWriter = new PrintWriter(
     new FileWriter(gMotifVertexAssociationFile, true)
   )
-  /*
 
-   * construct motif from edges to compute their information content
-   *
-   * if node-time is < min-motif(t0) time ==> it is older node
-   * if node-time is == t2 or t3 ==> it is a new node. IF it is new node, make sure to mark its time as -1 so that
-   * no other edge in any other temporal motif can mark it a "new" again which leads to wrong expected number of
-   * nodes.
-   * else ==> it is older node (ie.e. between t0-t1 or t1-t2). node-time can not be more than t3
-   * because node-time is minimum time of all the adjacent edges.
-   */
   val gHigherGraphFile = new File(
     t1 + "HigherGraph_" + prefix_annotation + "" + ".txt"
   )
