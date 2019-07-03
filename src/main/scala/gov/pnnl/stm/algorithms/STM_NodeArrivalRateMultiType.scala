@@ -322,12 +322,7 @@ object STM_NodeArrivalRateMultiType {
     val iso_v_cnt = isolated_v.count
     println("iso count is ", iso_v_cnt)
 
-    gMotifVertexAssociationFWriter.println(
-      currItrID + "," +
-        currItrID + "," +
-        gMotifNameToKey(motifName) + "," +
-        isolated_v.collect().mkString(",")
-    )
+    writeMotifVertexAssoication(isolated_v.collect(),motifName)
 
     write_vertex_independence(iso_v_cnt, iso_v_cnt)
 
@@ -1210,15 +1205,8 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
         .collect()
-      val motif_v_file = new PrintWriter(
-        new File(
-          t1 + "Motif_Vertex_Association_Self_Loop" + prefix_annotation +
-            "" +
-            ".txt"
-        )
-      )
-      self_loop_nodes.foreach(v => motif_v_file.println(v))
-      motif_v_file.flush()
+
+      writeMotifVertexAssoication(self_loop_nodes,motifName)
 
       val v_distinct = self_loop_nodes.length
       write_vertex_independence(v_distinct, total_self_loop_cnt)
@@ -1265,22 +1253,17 @@ object STM_NodeArrivalRateMultiType {
       })
       .distinct()
       .collect()
-//    val filepath = t1 + "Motif_Vertex_Association_" + filename + prefix_annotation + ".txt"
-//    println(
-//      "Writing file ",
-//      t1 + "Motif_Vertex_Association_" + filename + prefix_annotation + ".txt"
-//    )
-//    val motif_v_file = new PrintWriter(new FileWriter(filepath, true))
-//    //adding this line so that we know the start of the write in case of sampling=true
-//    motif_v_file.println("NodeID")
-//    multi_edge_nodes.foreach(v => motif_v_file.println(v))
-//    motif_v_file.flush()
 
+    writeMotifVertexAssoication(multi_edge_nodes,motifName)
+
+  }
+
+  def writeMotifVertexAssoication(allV: Array[Int], motifName: String): Unit = {
     gMotifVertexAssociationFWriter.println(
       currItrID + "," +
         currItrID + "," +
         gMotifNameToKey(motifName) + "," +
-        multi_edge_nodes.mkString(",")
+        allV.mkString(",")
     )
   }
 
@@ -2576,18 +2559,7 @@ object STM_NodeArrivalRateMultiType {
           num_motif_edges
         ).cache()
         write_motif_vertex_association_file(validMotifsArray,motifName)
-//        if (motifName.equalsIgnoreCase("loop"))
-//          write_motif_vertex_association_file(validMotifsArray, "loop")
-//        else if (motifName.equalsIgnoreCase("outdiad"))
-//          write_motif_vertex_association_file(validMotifsArray, "outdyad")
-//        else if (motifName.equalsIgnoreCase("indiad"))
-//          write_motif_vertex_association_file(validMotifsArray, "indyad")
-//        else if (motifName.equalsIgnoreCase("inoutdiad"))
-//          write_motif_vertex_association_file(validMotifsArray, "inoutdyad")
 
-        // Dont need to compute motif structure to update dataframe. Just create a big
-        // array of all unique edges and use that
-        //val uniqeE = e1 ++ e2
         val uniqeEDF = sqlc
           .createDataFrame(validMotifsArray)
           .toDF("src", "type", "dst", "time")
