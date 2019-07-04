@@ -256,7 +256,8 @@ object STM_NodeArrivalRateMultiType {
 
     val inputSimpleTAG = baseTAG.get_simple_tagrdd
     /*
-     * Broacast the vertext arrival times to each cluster-node because it us used in look-up as local Map
+     * Broacast the vertext arrival times to each cluster-node because it us used in look-up as
+     * local Map
      */
     val vAppearanceTime: RDD[(Int, Long)] =
       this.get_vertex_birth_time(inputSimpleTAG).cache()
@@ -300,8 +301,6 @@ object STM_NodeArrivalRateMultiType {
       println("graph sizev ", g.vertices.count)
       println("graph size e", g.edges.count)
     }
-    //broadcast the deg dist. we use it for other motifs too.
-    val v_cnt = g.vertices.count()
 
     var isolated_v  = g.degrees
       .filter(v => v.getAs[Int](1) == 0)
