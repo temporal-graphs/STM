@@ -1990,7 +1990,7 @@ object STM_NodeArrivalRateMultiType {
       .count
   }
 
-  def sneakyStar(
+  def topKStar(
     tmpG: GraphFrame,
     num_motif_nodes: Int,
     num_motif_edges: Int,
@@ -2143,7 +2143,7 @@ object STM_NodeArrivalRateMultiType {
 
         println("original graph e ", tmpG.edges.count())
         val res =
-          sneakyStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName)
+          topKStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName)
         reuse_node_info_star = res._1
         avg_reuse_temporal_offset_info_star = res._2
         val newGraph = res._3.cache()
