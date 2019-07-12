@@ -784,8 +784,13 @@ object STM_NodeArrivalRateMultiType {
                   case (x, y) => x + y
                 }
 
+              /*
+               * Should not normalize offset time with the probability of the snapshot.
+               * Offset is the exact value of duration time even in the sampled snapshot
+               */
               val weighted_offset_info =
-                gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
+              //  gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
+              gOffsetInfo.flatten.map(m => m)
               gOffsetInfo_itr_local =
                 gOffsetInfo_itr_local.zip(weighted_offset_info).map {
                   case (x, y) => x + y
