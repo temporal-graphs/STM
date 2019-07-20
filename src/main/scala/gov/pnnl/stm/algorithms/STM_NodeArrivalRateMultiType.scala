@@ -2157,7 +2157,7 @@ object STM_NodeArrivalRateMultiType {
           .find(gAtomicMotifs(motifName))
           .filter("a != b")
           .filter("b != c")
-          .filter("c != a")
+          .filter("c != d")
           .filter("a != d")
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
