@@ -34,10 +34,12 @@ import scala.collection.mutable.ListBuffer
   * @author puro755
   *
   */
-object STM_NodeArrivalRateMultiType {
+object STM_NodeArrivalRateMultiType
+{
 
   /*
    * Many global variables are define at the end of the file
+   * FileWriter are abbrevated as FWr
    */
 
   println("######OBJECT CREATED ; STM_NodeArrivalRateMultiType ######")
@@ -50,20 +52,20 @@ object STM_NodeArrivalRateMultiType {
   val gMotifProbFile = new File(
     t1 + "MotifProb_Rate_" + prefix_annotation + ".txt"
   )
-  val gMotifProbFWriter = new PrintWriter(gMotifProbFile)
+  val gMotifProbFWr = new PrintWriter(gMotifProbFile)
   val gMotifAllProbFile = new File(
     t1 + "MotifProb_AbsCount_" + prefix_annotation + ".txt"
   )
-  val gMotifAllProbFWriter = new PrintWriter(gMotifAllProbFile)
+  val gMotifAllProbFWr = new PrintWriter(gMotifAllProbFile)
   val gMotifOrbitFile = new File(
     t1 + "MotifOrbit_Independence_" + prefix_annotation + ".txt"
   )
-  val gMotifOrbitFWriter = new PrintWriter(gMotifOrbitFile)
+  val gMotifOrbitFWr = new PrintWriter(gMotifOrbitFile)
   val gMotifAllProbFile_Individual = new File(
     t1 + "MotifProb_AbsCount_Individual" +
       prefix_annotation + ".txt"
   )
-  val gMotifAllProb_IndividualFWriter = new PrintWriter(
+  val gMotifAllProb_IndividualFWr = new PrintWriter(
     gMotifAllProbFile_Individual
   )
   val gOffsetFile = new File(t1 + "Offset_Rate_" + prefix_annotation + ".txt")
@@ -79,26 +81,26 @@ object STM_NodeArrivalRateMultiType {
   val gMotifIndependenceFile = new File(
     t1 + "Motif_Independence_" + prefix_annotation + ".txt"
   )
-  val gMotifIndependenceFWriter = new PrintWriter(
+  val gMotifIndependenceFWr = new PrintWriter(
     new FileWriter(gMotifIndependenceFile, true)
   )
   val gVertexIndependenceFile = new File(
     t1 + "Vertex_Independence_" + prefix_annotation + ".txt"
   )
-  val gVertexIndependenceFWriter = new PrintWriter(
+  val gVertexIndependenceFWr = new PrintWriter(
     new FileWriter(gVertexIndependenceFile, true)
   )
-  val gOrbitVertexAssociationFile = new File(
+  val gOrbtVtxAssoFile = new File(
     t1 + "Orbit_Association_" + prefix_annotation + ".txt"
   )
-  val gOrbitVertexAssociationFWriter = new PrintWriter(
-    new FileWriter(gOrbitVertexAssociationFile, true)
+  val gOrbtVtxAssoFWr = new PrintWriter(
+    new FileWriter(gOrbtVtxAssoFile, true)
   )
-  val gMotifVertexAssociationFile = new File(
+  val gMotifVtxAssoFile = new File(
     t1 + "Motif_Association_" + prefix_annotation + ".txt"
   )
-  val gMotifVertexAssociationFWriter = new PrintWriter(
-    new FileWriter(gMotifVertexAssociationFile, true)
+  val gMotifVtxAssoFWr = new PrintWriter(
+    new FileWriter(gMotifVtxAssoFile, true)
   )
 
   val gHigherGraphFile = new File(
@@ -329,7 +331,7 @@ object STM_NodeArrivalRateMultiType {
 
     write_motif_independence(iso_v_cnt, iso_v_cnt)
 
-    gMotifAllProb_IndividualFWriter.println("Iso_V", iso_v_cnt)
+    gMotifAllProb_IndividualFWr.println("Iso_V", iso_v_cnt)
     gMotifInfo += List(iso_v_cnt.toInt)
     println(gMotifInfo)
     //gOffsetInfo += List(0L)
@@ -383,7 +385,7 @@ object STM_NodeArrivalRateMultiType {
     write_vertex_independence(iso_edge_cnt * 2, iso_edge_cnt * 2)
     write_motif_independence(iso_edge_cnt, iso_edge_cnt)
 
-    gMotifAllProb_IndividualFWriter.println("iso_e", iso_edge_cnt)
+    gMotifAllProb_IndividualFWr.println("iso_e", iso_edge_cnt)
     gMotifInfo += List(iso_edge_cnt.toInt)
     //gOffsetInfo += List(0L)
     GraphFrame(newv, newe)
@@ -593,20 +595,20 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Write current GMotifInfo to the "All" file
      */
-    gMotifAllProbFWriter.println(
+    gMotifAllProbFWr.println(
       1 + "," + 1 + "," + gMotifInfo.flatten.mkString(",")
     )
-    gMotifAllProbFWriter
+    gMotifAllProbFWr
       .flush()
     gOffsetAllFWriter.println(
       1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     )
-    gMotifOrbitFWriter.println(
+    gMotifOrbitFWr.println(
       1 + "," + 1 + "," + gMotifOrbitInfo.flatten.mkString(",")
     )
     gOffsetAllFWriter.flush()
-    gMotifAllProb_IndividualFWriter.flush()
-    gMotifOrbitFWriter.flush()
+    gMotifAllProb_IndividualFWr.flush()
+    gMotifOrbitFWr.flush()
 
     /*
      * Generate Output
@@ -615,7 +617,7 @@ object STM_NodeArrivalRateMultiType {
      */
     val normMotifProb: ListBuffer[Double] =
       gMotifInfo.flatMap(f0 => f0.map(f1 => f1.toDouble / duration))
-    gMotifProbFWriter.println(normMotifProb.mkString("\n"))
+    gMotifProbFWr.println(normMotifProb.mkString("\n"))
     //gMotifProbFile.println("duration in milliseconds=" + duration)
 
     val offsetProb: ListBuffer[Long] =
@@ -625,7 +627,7 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Output files
      */
-    gMotifProbFWriter.flush()
+    gMotifProbFWr.flush()
     gOffsetFWriter.flush()
 
     return (normMotifProb, offsetProb)
@@ -708,10 +710,10 @@ object STM_NodeArrivalRateMultiType {
         if ((rn.nextDouble() < sample_selection_prob) || currWinID == 0) //forcing i==0 so that atleast one is picked
           {
             println(" i is " + i)
-            gVertexIndependenceFWriter.println(
+            gVertexIndependenceFWr.println(
               "num_v_nonverlapping,num_v_max,v_independence_" + itr + "_" + i
             )
-            gMotifIndependenceFWriter.println(
+            gMotifIndependenceFWr.println(
               "num_total_motif,num_ind_motif," +
                 "motif_independence_" + itr + "_" + i
             )
@@ -751,10 +753,10 @@ object STM_NodeArrivalRateMultiType {
             /*
              * Write current GMotifInfo to the "All" file
              */
-            gMotifAllProbFWriter.println(
+            gMotifAllProbFWr.println(
               itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
             )
-            gMotifAllProbFWriter.flush()
+            gMotifAllProbFWr.flush()
             gOffsetAllFWriter.println(
               itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
             )
@@ -840,12 +842,12 @@ object STM_NodeArrivalRateMultiType {
      */
     gMotifInfo_global = gMotifInfo_global.map(m => m / num_iterations)
     gOffsetInfo_global = gOffsetInfo_global.map(o => o / num_iterations)
-    gMotifProbFWriter.println(gMotifInfo_global.mkString("\n"))
+    gMotifProbFWr.println(gMotifInfo_global.mkString("\n"))
     gOffsetFWriter.println(gOffsetInfo_global.mkString("\n"))
     /*
      * Output files
      */
-    gMotifProbFWriter.flush()
+    gMotifProbFWr.flush()
     gOffsetFWriter.flush()
     (gMotifInfo_global, gOffsetInfo_global)
   }
@@ -870,7 +872,7 @@ object STM_NodeArrivalRateMultiType {
     val num_motif_edges = 1
     try {
       if (sim_e.isEmpty) {
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "sim_e",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -883,7 +885,7 @@ object STM_NodeArrivalRateMultiType {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         println("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "sim_e",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -928,7 +930,7 @@ object STM_NodeArrivalRateMultiType {
       })
 
     val local_motif_info = reuse_node_info.values.toList
-    gMotifAllProb_IndividualFWriter.println("sim_e", local_motif_info)
+    gMotifAllProb_IndividualFWr.println("sim_e", local_motif_info)
     gMotifInfo += local_motif_info
     println(gMotifInfo)
 
@@ -1002,7 +1004,7 @@ object STM_NodeArrivalRateMultiType {
         // https://stackoverflow.com/questions/32707620/how-to-check-if-spark-dataframe-is-empty
         try {
           if (selctedMotifEdges.head(1).isEmpty) {
-            gMotifAllProb_IndividualFWriter.println("multi e", List(0))
+            gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
             gOffsetInfo += List(-1L)
             return tmpG
@@ -1012,7 +1014,7 @@ object STM_NodeArrivalRateMultiType {
             val sw = new StringWriter
             e.printStackTrace(new PrintWriter(sw))
             println("\n Exception is  " + sw.toString())
-            gMotifAllProb_IndividualFWriter.println("multi e", List(0))
+            gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
             gOffsetInfo += List(-1L)
             return tmpG
@@ -1126,7 +1128,7 @@ object STM_NodeArrivalRateMultiType {
         // For reuse_node_info: For every motif, both the nodes are reused for the 2nd edge
         // So the resuling map it (2-> number of multi edges)
         val reuse_node_info: Map[Int, Int] = Map(2 -> total_multi_edges)
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "multi e",
           reuse_node_info.values.toList
         )
@@ -1234,7 +1236,7 @@ object STM_NodeArrivalRateMultiType {
         .distinct
         .toDF("id", "name")
       val newGraph = GraphFrame(newVRDD, newEDF)
-      gMotifAllProb_IndividualFWriter.println(
+      gMotifAllProb_IndividualFWr.println(
         "self loop",
         new_self_loop_cnt,
         reuse_self_loop_cnt
@@ -1269,7 +1271,7 @@ object STM_NodeArrivalRateMultiType {
   }
 
   def writeMotifVertexAssoication(allV: Array[Int], motifName: String): Unit = {
-    gMotifVertexAssociationFWriter.println(
+    gMotifVtxAssoFWr.println(
       currItrID + "," +
         currItrID + "," +
         gMotifNameToKey(motifName) + "," +
@@ -1564,12 +1566,12 @@ object STM_NodeArrivalRateMultiType {
        */
       val orbitIDMapMotif = gMotifNameToOrbitKeys(motifName)
       orbit_vertex_asso.foreach(ova => {
-        gOrbitVertexAssociationFWriter.println(
+        gOrbtVtxAssoFWr.println(
           currItrID + "," + currWinID + "," +
             + orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
         )
       })
-      gOrbitVertexAssociationFWriter.flush()
+      gOrbtVtxAssoFWr.flush()
 
       /*
        * Write orbit independence
@@ -1793,7 +1795,7 @@ def find4EdgNVtxMotifs(
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {
       if (selctedMotifEdges_local_nonoverlap.head(1).isEmpty) {
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "4env ",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -1806,7 +1808,7 @@ def find4EdgNVtxMotifs(
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         println("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "4env ",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -1856,7 +1858,7 @@ def find4EdgNVtxMotifs(
       true_mis_set_rdd
     )
 
-    gMotifAllProb_IndividualFWriter.println(
+    gMotifAllProb_IndividualFWr.println(
       "4env ",
       reuse_node_info.values.toList
     )
@@ -2225,7 +2227,7 @@ def find4EdgNVtxMotifs(
     // get unique motif
     try {
       if (selctedMotifEdges_local_nonoverlap.head(1).isEmpty) {
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "3env",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -2238,7 +2240,7 @@ def find4EdgNVtxMotifs(
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         println("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "3env",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -2313,7 +2315,7 @@ def find4EdgNVtxMotifs(
       .map {
         case (x, y) => x + y
       }
-    gMotifAllProb_IndividualFWriter.println("3env ", local_res)
+    gMotifAllProb_IndividualFWr.println("3env ", local_res)
     gMotifInfo += local_res
 
     write_motif_independence(num_overlap_motifs, num_nonoverlap_motifs)
@@ -2468,7 +2470,7 @@ def find4EdgNVtxMotifs(
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {
       if (selctedMotifEdges_local_nonoverlap.head(1).isEmpty) {
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "2env",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -2481,7 +2483,7 @@ def find4EdgNVtxMotifs(
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         println("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWriter.println(
+        gMotifAllProb_IndividualFWr.println(
           "2env",
           List.fill(num_motif_nodes + 1) { 0 }
         )
@@ -2543,7 +2545,7 @@ def find4EdgNVtxMotifs(
         true_mis_set_rdd
       )
 
-    gMotifAllProb_IndividualFWriter.println(
+    gMotifAllProb_IndividualFWr.println(
       "2env",
       reuse_node_info.values.toList
     )
@@ -2676,7 +2678,7 @@ def find4EdgNVtxMotifs(
       val num_residual_edges = selctedMotifEdges.count()
       try {
         if (selctedMotifEdges.head(1).isEmpty) {
-          gMotifAllProb_IndividualFWriter.println("redi e", List(0))
+          gMotifAllProb_IndividualFWr.println("redi e", List(0))
           gMotifInfo += List(0)
           //gOffsetInfo += List(0L)
           return tmpG
@@ -2686,7 +2688,7 @@ def find4EdgNVtxMotifs(
           val sw = new StringWriter
           e.printStackTrace(new PrintWriter(sw))
           println("\n Exception is  " + sw.toString())
-          gMotifAllProb_IndividualFWriter.println("redi e", List(0))
+          gMotifAllProb_IndividualFWr.println("redi e", List(0))
           gMotifInfo += List(0)
           //gOffsetInfo += List(0L)
           return tmpG
@@ -2744,7 +2746,7 @@ def find4EdgNVtxMotifs(
       // not residual edge but a wedge
       val reused_node_cnt =
         (num_residual_edges - one_new_nodes_motif_cnt).toInt
-      gMotifAllProb_IndividualFWriter.println(
+      gMotifAllProb_IndividualFWr.println(
         List(one_new_nodes_motif_cnt, reused_node_cnt)
       )
       gMotifInfo += List(one_new_nodes_motif_cnt, reused_node_cnt)
@@ -2804,20 +2806,20 @@ def find4EdgNVtxMotifs(
   def write_motif_independence(overlapping_cnt: Long,
                                non_overlapping_cnt: Long): Unit = {
     // write motif uniqueness file
-    gMotifIndependenceFWriter.println(
+    gMotifIndependenceFWr.println(
       overlapping_cnt + "," +
         non_overlapping_cnt + "," +
         non_overlapping_cnt.toDouble / overlapping_cnt.toDouble
     )
-    gMotifIndependenceFWriter.flush()
+    gMotifIndependenceFWr.flush()
   }
 
   def write_vertex_independence(num_v_nonoverlapping: Long,
                                 num_v_max_possible: Long) = {
-    gVertexIndependenceFWriter.println(
+    gVertexIndependenceFWr.println(
       num_v_nonoverlapping + "," + num_v_max_possible + "," +
         num_v_nonoverlapping.toDouble / num_v_max_possible.toDouble
     )
-    gVertexIndependenceFWriter.flush()
+    gVertexIndependenceFWr.flush()
   }
 }
