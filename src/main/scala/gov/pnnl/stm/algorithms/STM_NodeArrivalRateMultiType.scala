@@ -10,17 +10,19 @@ import java.io._
 import java.nio.file.{Files, Paths}
 
 import scalaz.Scalaz._
+
 import util.control.Breaks._
 import org.apache.spark.sql._
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.spark.rdd.RDD
 import org.graphframes.GraphFrame
-import gov.pnnl.builders.{TAGBuilder}
+import gov.pnnl.builders.TAGBuilder
 import gov.pnnl.datamodel.GlobalTypes._
 import gov.pnnl.stm.conf.STMConf
+import gov.pnnl.stm.datamodel.timeOffset
 import org.apache.commons.io.filefilter.RegexFileFilter
-import org.apache.spark.sql.functions.{col}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
@@ -764,8 +766,10 @@ object STM_NodeArrivalRateMultiType {
               gMotifInfo_itr_local = gMotifInfo.flatten
                 .map(f1 => f1.toDouble / time_in_window)
                 .map(m => (m / window_prob(i)))
-              gOffsetInfo_itr_local =
-                gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
+
+              //offset info needs not to be normalized
+//              gOffsetInfo_itr_local =
+//                gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
               println(
                 "gmotif info is empty " + gMotifInfo_itr_local.mkString("&&")
               )
@@ -807,6 +811,8 @@ object STM_NodeArrivalRateMultiType {
       }
       gMotifInfo_itr_local =
         gMotifInfo_itr_local.map(m => m / num_w_in_sampling)
+
+      //Averaging offset time is fine because in every sample, we have added corresponding times
       gOffsetInfo_itr_local =
         gOffsetInfo_itr_local.map(o => o / num_w_in_sampling)
 
@@ -830,7 +836,7 @@ object STM_NodeArrivalRateMultiType {
     }
 
     /*
-     * Average out global result for all the interations
+     * Average out global result for all the iterations
      */
     gMotifInfo_global = gMotifInfo_global.map(m => m / num_iterations)
     gOffsetInfo_global = gOffsetInfo_global.map(o => o / num_iterations)
@@ -1648,7 +1654,21 @@ object STM_NodeArrivalRateMultiType {
     }
   }
 
-  def find4EdgNVtxMotifs(
+  def getEdgeOffsetMeanSDev(
+    reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[eTime]]
+  ):ArrayBuffer[timeOffset] =
+  {
+    reuse_temporal_offset_info.map(edgeInfo =>{
+      val eSum = edgeInfo.sum
+      val eCnt = edgeInfo.length
+      val eMean :Long  = eSum/eCnt
+      val devs = edgeInfo.map(offset => (offset - eMean) * (offset - eMean))
+      val stddev = Math.sqrt(devs.sum / (eCnt - 1))
+      new timeOffset(eMean,stddev,eCnt)
+    })
+  }
+
+def find4EdgNVtxMotifs(
     tmpG: GraphFrame,
     motifName: String,
     et1: eType,
@@ -1855,15 +1875,7 @@ object STM_NodeArrivalRateMultiType {
     println("quad time" + gOffsetInfo)
     // Get time offset infor
     val cnt_validMotifs = true_mis_set_rdd.count()
-    val reuse_temporal_offset_info: ArrayBuffer[Long] =
-      get_edge_time_offset_info_from_mis_motifs(
-        num_motif_edges,
-        true_mis_set_rdd
-      )
-
-    val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
-      reuse_temporal_offset_info.map(te => te / cnt_validMotifs)
-    gOffsetInfo += avg_reuse_temporal_offset_info.toList
+  updateEdgeOffset(true_mis_set_rdd,num_motif_edges)
 
     validMotifsArray
 
@@ -1914,8 +1926,8 @@ object STM_NodeArrivalRateMultiType {
   def get_edge_time_offset_info_from_mis_motifs(
     num_motif_edges: Int,
     mis_set: RDD[String]
-  ): ArrayBuffer[Long] = {
-    val reuse_temporal_offset_info =
+  ): ArrayBuffer[ArrayBuffer[Long]] = {
+    val reuse_temporal_offset_info :ArrayBuffer[ArrayBuffer[Long]] =
       mis_set
         .map(motifid => {
 
@@ -1927,8 +1939,8 @@ object STM_NodeArrivalRateMultiType {
             all_edges_arrs.append(all_edges_ids(i).split("_"))
           }
 
-          val local_reuse_temporal_offset_info: ArrayBuffer[Long] =
-            ArrayBuffer.fill(num_motif_edges - 1)(0)
+          val local_reuse_temporal_offset_info:ArrayBuffer[ArrayBuffer[Long]] =
+            ArrayBuffer(ArrayBuffer.fill(num_motif_edges - 1)(0))
 
           /*
            * if we have 3 edges then we have 2 offset values. between e2e1, and e3e2
@@ -1942,18 +1954,23 @@ object STM_NodeArrivalRateMultiType {
            */
           for (i <- 0 until num_motif_edges - 1) {
             local_reuse_temporal_offset_info(i) =
-              all_edges_arrs(i + 1)(3).toLong - all_edges_arrs(i)(3).toLong
+              ArrayBuffer(all_edges_arrs(i + 1)(3).toLong - all_edges_arrs(i)(3).toLong)
 
           }
           local_reuse_temporal_offset_info
         })
         .treeReduce((arr1, arr2) => {
+          //val a = arr
           /*
            * Some arr1 has 3 offests (quad), some 2 (triag) some 1 (diad)
+           *
+           * in order to compute mean and standard deviation , we need to create
+           * maintain an array of all the values
            */
-          var res = ArrayBuffer[Long]()
+          var res = ArrayBuffer[ArrayBuffer[Long]]()
           for (i <- 0 until arr1.length)
-            res += ((arr1(i) + arr2(i)))
+            res += (arr1(i)  ++ arr2(i))
+          //append two arraybuffers
           //ArrayBuffer((arr1(0) + arr2(0)),
           //          (arr1(1) + arr2(1)))
           res
@@ -2093,14 +2110,8 @@ object STM_NodeArrivalRateMultiType {
 
     }
     val cnt_validMotifs_star = true_mis_set_rdd_star.count
-    val reuse_temporal_offset_info_star: ArrayBuffer[Long] =
-      get_edge_time_offset_info_from_mis_motifs(
-        num_motif_edges,
-        true_mis_set_rdd_star
-      )
 
-    val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
-      reuse_temporal_offset_info_star.map(te => te / cnt_validMotifs_star)
+    val avg_reuse_temporal_offset_info = getGlobalTimeOffsetList(true_mis_set_rdd_star,num_motif_edges)
 
     //true_mis_set_rdd_star.collect().foreach(s=>println(s))
     val validMotifsArray_star: RDD[(Int, Int, Int, Long)] =
@@ -2163,7 +2174,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("a.id < c.id")
-          // reducing candidate tow loop i.e. azc or cza=> pick only azc
+          // reducing candidate two loop i.e. azc or cza=> pick only azc
           // time based restriction wont work for this motif type
           //.filter("e1.time < e2.time")
           //.filter("e2.time < e3.time")
@@ -2313,15 +2324,8 @@ object STM_NodeArrivalRateMultiType {
     // Get time offset information
     val cnt_validMotifs = true_mis_set_rdd.count()
 
-    val reuse_temporal_offset_info: ArrayBuffer[Long] =
-      get_edge_time_offset_info_from_mis_motifs(
-        num_motif_edges,
-        true_mis_set_rdd
-      )
-
     val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
-      reuse_temporal_offset_info.map(te => te / cnt_validMotifs)
-    //TODO: THIS way of adding time offset does not seems correct..
+      getGlobalTimeOffsetList(true_mis_set_rdd,num_motif_edges)
     gOffsetInfo += (avg_reuse_temporal_offset_info.toList
       .zip(avg_reuse_temporal_offset_info.toList))
       .map { case (x, y) => x + y }
@@ -2359,6 +2363,43 @@ object STM_NodeArrivalRateMultiType {
     gSQLContext.createDataFrame(selctedMotifEdges_NonOverRDD, motif_schme)
 
   }
+
+  def getGlobalTimeOffsetList(true_mis_set_rdd: RDD[String],
+                              num_motif_edges: eType): ArrayBuffer[Long] =
+  {
+    val reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[Long]] =
+      get_edge_time_offset_info_from_mis_motifs(
+                                                 num_motif_edges,
+                                                 true_mis_set_rdd
+                                               )
+
+    //Create timeOffset objects. reuse_temporal_offset_info should be either of
+    // size 2, 3, or 4. edgeInfo is a ArrayBuffer[Long] for a each edge in the
+    // temporal motif
+    val timeOffsetInfo: ArrayBuffer[timeOffset] = getEdgeOffsetMeanSDev(
+                                                                         reuse_temporal_offset_info
+                                                                       )
+
+    val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
+      timeOffsetInfo.flatMap(
+                              to => ArrayBuffer(to.mean.toLong, to.stdDev.toLong,to
+                                .populationSize.toLong)
+                            )
+    avg_reuse_temporal_offset_info
+  }
+
+  /*
+ * Update global gOffsetInfo
+ */
+  def updateEdgeOffset(true_mis_set_rdd: RDD[String],
+                     num_motif_edges: eType) = {
+
+    val avg_reuse_temporal_offset_info:
+      ArrayBuffer[Long] = getGlobalTimeOffsetList(true_mis_set_rdd,num_motif_edges)
+
+  gOffsetInfo += avg_reuse_temporal_offset_info.toList
+
+}
 
   def find2EdgNVtxMotifs(tmpG: GraphFrame,
                          motifName: String,
@@ -2519,21 +2560,14 @@ object STM_NodeArrivalRateMultiType {
 
     // Get time offset infor
     val cnt_validMotifs = true_mis_set_rdd.count()
-    val reuse_temporal_offset_info: ArrayBuffer[Long] =
-      get_edge_time_offset_info_from_mis_motifs(
-        num_motif_edges,
-        true_mis_set_rdd
-      )
-
-    val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
-      reuse_temporal_offset_info.map(te => te / cnt_validMotifs)
-    gOffsetInfo += avg_reuse_temporal_offset_info.toList
+    updateEdgeOffset(true_mis_set_rdd,num_motif_edges)
 
     true_mis_set_rdd.unpersist(true)
     println(" Finishing 2e3v motif" + gMotifInfo)
     println(" Finishing 2e3v timeoffset" + gOffsetInfo)
     validMotifsArray
   }
+
 
   def findDyad(g: GraphFrame,
                motifName: String,
