@@ -11,6 +11,7 @@ import java.nio.file.{Files, Paths}
 
 import scalaz.Scalaz._
 
+
 import util.control.Breaks._
 import org.apache.spark.sql._
 import org.apache.log4j.Level
@@ -34,8 +35,7 @@ import scala.collection.mutable.ListBuffer
   * @author puro755
   *
   */
-object STM_NodeArrivalRateMultiType
-{
+object STM_NodeArrivalRateMultiType {
 
   /*
    * Many global variables are define at the end of the file
@@ -115,7 +115,6 @@ object STM_NodeArrivalRateMultiType
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
   val gMotifNameToOrbitKeys = STMConf.motifNameToOrbitKeys
-
 
   var currItrID = 1
   var currWinID = 1
@@ -235,9 +234,9 @@ object STM_NodeArrivalRateMultiType
   }
 
   def processTAG(
-    baseTAG: gov.pnnl.datamodel.TAG,
-    gDebug: Boolean,
-    clo: Map[String, String]
+      baseTAG: gov.pnnl.datamodel.TAG,
+      gDebug: Boolean,
+      clo: Map[String, String]
   ): (ListBuffer[Double], ListBuffer[Long], Array[Double]) = {
 
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
@@ -306,7 +305,7 @@ object STM_NodeArrivalRateMultiType
       println("graph size e", g.edges.count)
     }
 
-    var isolated_v  = g.degrees
+    var isolated_v = g.degrees
       .filter(v => v.getAs[Int](1) == 0)
       .rdd
       .map(v => v.getAs[Int](0))
@@ -325,7 +324,7 @@ object STM_NodeArrivalRateMultiType
     val iso_v_cnt = isolated_v.count
     println("iso count is ", iso_v_cnt)
 
-    writeMotifVertexAssoication(isolated_v.collect(),motifName)
+    writeMotifVertexAssoication(isolated_v.collect(), motifName)
 
     write_vertex_independence(iso_v_cnt, iso_v_cnt)
 
@@ -376,7 +375,7 @@ object STM_NodeArrivalRateMultiType
 
     val tmi_edges_rdd: RDD[(Int, Int, Int, Long)] =
       selctedMotifEdges.rdd.map(row => get_edge_from_row(row))
-    write_motif_vertex_association_file(tmi_edges_rdd,motifName)
+    write_motif_vertex_association_file(tmi_edges_rdd, motifName)
 
     val newe = g.edges.except(selctedMotifEdges)
     val newv = g.vertices.except(v_deg_1)
@@ -439,7 +438,7 @@ object STM_NodeArrivalRateMultiType
               if (validMotifsArray.isEmpty)
                 break
 
-              write_motif_vertex_association_file(validMotifsArray,motifName)
+              write_motif_vertex_association_file(validMotifsArray, motifName)
 //              if (motifName.equalsIgnoreCase("quad"))
 //                write_motif_vertex_association_file(validMotifsArray, "quad")
 //              else if (motifName.equalsIgnoreCase("twoloop"))
@@ -552,9 +551,9 @@ object STM_NodeArrivalRateMultiType
   }
 
   def complete_STM(
-    gDebug: Boolean,
-    gETypes: Array[Int],
-    initial_simple_tag: SimpleTAGRDD
+      gDebug: Boolean,
+      gETypes: Array[Int],
+      initial_simple_tag: SimpleTAGRDD
   ): (ListBuffer[Double], ListBuffer[Long]) = {
     var call_id = -1
 
@@ -595,11 +594,8 @@ object STM_NodeArrivalRateMultiType
     /*
      * Write current GMotifInfo to the "All" file
      */
-    gMotifAllProbFWr.println(
-      1 + "," + 1 + "," + gMotifInfo.flatten.mkString(",")
-    )
-    gMotifAllProbFWr
-      .flush()
+    gMotifAllProbFWr.println(1 + "," + 1 + "," + gMotifInfo.flatten.mkString(","))
+    gMotifAllProbFWr.flush()
     gOffsetAllFWriter.println(
       1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     )
@@ -649,12 +645,12 @@ object STM_NodeArrivalRateMultiType
    */
 
   def approx_STM(
-    gDebug: Boolean,
-    sampling_population: Int,
-    sample_selection_prob: Double,
-    num_iterations: Int,
-    gETypes: Array[Int],
-    initial_simple_tag: SimpleTAGRDD
+      gDebug: Boolean,
+      sampling_population: Int,
+      sample_selection_prob: Double,
+      num_iterations: Int,
+      gETypes: Array[Int],
+      initial_simple_tag: SimpleTAGRDD
   ): (ListBuffer[Double], ListBuffer[Long]) = {
 
     /*
@@ -795,8 +791,8 @@ object STM_NodeArrivalRateMultiType
                * Offset is the exact value of duration time even in the sampled snapshot
                */
               val weighted_offset_info =
-              //  gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
-              gOffsetInfo.flatten.map(m => m)
+                //  gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
+                gOffsetInfo.flatten.map(m => m)
               gOffsetInfo_itr_local =
                 gOffsetInfo_itr_local.zip(weighted_offset_info).map {
                   case (x, y) => x + y
@@ -877,7 +873,6 @@ object STM_NodeArrivalRateMultiType
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1 }
         return inputSimpleTAG
       }
     } catch {
@@ -890,7 +885,6 @@ object STM_NodeArrivalRateMultiType
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1 }
         return inputSimpleTAG
 
     }
@@ -950,7 +944,7 @@ object STM_NodeArrivalRateMultiType
     * @return
     */
   def get_vertex_birth_time(
-    nodeQuadruples: RDD[(vertexId, eType, vertexId, eTime)]
+      nodeQuadruples: RDD[(vertexId, eType, vertexId, eTime)]
   ): RDD[(Int, Long)] = {
 
     /*
@@ -1006,7 +1000,7 @@ object STM_NodeArrivalRateMultiType
           if (selctedMotifEdges.head(1).isEmpty) {
             gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
-            gOffsetInfo += List(-1L)
+            gOffsetInfo += List(-1L,-1L,-1L)
             return tmpG
           }
         } catch {
@@ -1016,7 +1010,7 @@ object STM_NodeArrivalRateMultiType
             println("\n Exception is  " + sw.toString())
             gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
-            gOffsetInfo += List(-1L)
+            gOffsetInfo += List(-1L,-1L,-1L)
             return tmpG
 
         }
@@ -1086,9 +1080,16 @@ object STM_NodeArrivalRateMultiType
           (max_time - min_time).toDouble / all_multi_edges_on_srcdst.size
         })
 
-        val avg_offset_time = avg_offset_time_perkey
-          .sum() / avg_offset_time_perkey.count()
-        gOffsetInfo += List(avg_offset_time.toLong)
+        val eSum = avg_offset_time_perkey.sum
+        val eCnt = avg_offset_time_perkey.count
+        val eMean: Long = eSum.toLong / eCnt
+        val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
+        val eMeanLocal = gSC.broadcast(eMean).value
+        val devs = avg_offset_time_perkey.map(offset => (offset - eMeanLocal) * (offset - eMeanLocal))
+        val stddev = if (eCnt == 1) Math.sqrt(devs.sum / eCnt)
+                     else Math.sqrt(devs.sum / (eCnt - 1))
+
+        gOffsetInfo += List(eMean,stddev.toLong,eCnt)
 
         /*
          * (per key offset is ,Set((3,1,0,1010), (3,1,0,1013)),1.5)
@@ -1122,7 +1123,7 @@ object STM_NodeArrivalRateMultiType
         multi_edge_node_file.flush()
 
         println("tatal multi edges are : ", total_multi_edges)
-        println("avg avg_offset_time is ", avg_offset_time)
+        println("avg avg_offset_time is ", eMean)
         val multi_edges_df = sqlc.createDataFrame(multi_edges_to_remove)
 
         // For reuse_node_info: For every motif, both the nodes are reused for the 2nd edge
@@ -1193,15 +1194,19 @@ object STM_NodeArrivalRateMultiType
         .distinct()
         .cache()
 
+      val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
+      val gVBirthTime_exec = gSC.broadcast(gVBirthTime).value
+
       val new_self_loop_cnt = selctedMotifEdges
         .filter(row => {
           val v = get_row_src(row)
           val t = get_row_time(row)
-          gVBirthTime.getOrElse(v, -1) == t
+          gVBirthTime_exec.getOrElse(v, -1) == t
         })
         .count()
         .toInt
 
+      // edge offset is not relevent here
       val total_self_loop_cnt = selctedMotifEdges.count()
       val reuse_self_loop_cnt =
         (total_self_loop_cnt - new_self_loop_cnt).toInt
@@ -1218,7 +1223,7 @@ object STM_NodeArrivalRateMultiType
         .distinct()
         .collect()
 
-      writeMotifVertexAssoication(self_loop_nodes,motifName)
+      writeMotifVertexAssoication(self_loop_nodes, motifName)
 
       val v_distinct = self_loop_nodes.length
       write_vertex_independence(v_distinct, total_self_loop_cnt)
@@ -1247,7 +1252,6 @@ object STM_NodeArrivalRateMultiType
       g.unpersist(true)
       tmpG = newGraph
       println("self loop done" + gMotifInfo)
-      println("self loop done" + gOffsetInfo)
     }
     tmpG
   }
@@ -1256,17 +1260,17 @@ object STM_NodeArrivalRateMultiType
    * write a motif's nodes to a file
    */
   def write_motif_vertex_association_file(
-    validMotifsArray: RDD[(Int, Int, Int, Long)],
-    motifName:String
+      validMotifsArray: RDD[(Int, Int, Int, Long)],
+      motifName: String
   ): Unit = {
-    val multi_edge_nodes :Array[Int] = validMotifsArray
+    val multi_edge_nodes: Array[Int] = validMotifsArray
       .flatMap(e => {
         Iterator(e._1, e._3)
       })
       .distinct()
       .collect()
 
-    writeMotifVertexAssoication(multi_edge_nodes,motifName)
+    writeMotifVertexAssoication(multi_edge_nodes, motifName)
 
   }
 
@@ -1328,14 +1332,6 @@ object STM_NodeArrivalRateMultiType
               break
 
             write_motif_vertex_association_file(validMotifsArray, motifName)
-//            if (motifName.equalsIgnoreCase("outstar"))
-//              write_motif_vertex_association_file(validMotifsArray, "outstar")
-//            else if (motifName.equalsIgnoreCase("instar"))
-//              write_motif_vertex_association_file(validMotifsArray, "instar")
-//            else if (motifName.equalsIgnoreCase("triangle"))
-//              write_motif_vertex_association_file(validMotifsArray, "triangle")
-//            else if (motifName.equalsIgnoreCase("triad"))
-//              write_motif_vertex_association_file(validMotifsArray, "triad")
 
             tmpG = get_new_graph_except_processed_motifs_edges(
               tmpG,
@@ -1349,8 +1345,8 @@ object STM_NodeArrivalRateMultiType
   }
 
   def get_new_graph_except_processed_motifs_edges(
-    tmpG: GraphFrame,
-    validMotifsArray: RDD[(Int, Int, Int, Long)]
+      tmpG: GraphFrame,
+      validMotifsArray: RDD[(Int, Int, Int, Long)]
   ): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
     val sqlc = spark.sqlContext
@@ -1386,7 +1382,7 @@ object STM_NodeArrivalRateMultiType
    *
    */
   def get_edges_from_mis_motif(
-    mis_set: RDD[String]
+      mis_set: RDD[String]
   ): RDD[(eType, eType, eType, eTime)] = {
 
     mis_set.flatMap(motif_id => {
@@ -1420,9 +1416,9 @@ object STM_NodeArrivalRateMultiType
    */
 
   def get_node_reuse_info_from_mis_motif(
-    num_motif_nodes: vertexId,
-    num_motif_edges: vertexId,
-    mis_set: RDD[String]
+      num_motif_nodes: vertexId,
+      num_motif_edges: vertexId,
+      mis_set: RDD[String]
   ): Map[vertexId, vertexId] = {
 
     val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
@@ -1520,8 +1516,8 @@ object STM_NodeArrivalRateMultiType
   }
 
   def get_all_v_motif(
-    row: Row,
-    num_motif_edges: Int
+      row: Row,
+      num_motif_edges: Int
   ): scala.collection.mutable.Set[Int] = {
     var set_of_v = scala.collection.mutable.Set[Int]()
     for (i <- 0 until num_motif_edges)
@@ -1530,8 +1526,8 @@ object STM_NodeArrivalRateMultiType
   }
 
   def writeOrbitIndependence_VertexAssociation(true_mis_set_rdd: RDD[String],
-                                   num_nonoverlapping_m: Long,
-                                   motifName: String): Unit = {
+                                               num_nonoverlapping_m: Long,
+                                               motifName: String): Unit = {
     /*
        "residualedge" -> "(a)-[e1]->(b)",: ALWAYS ONE SO DONT WRITE
        "selfloop" -> "(a)-[e1]->(b)",ALWAYS ONE SO DONT WRITE
@@ -1550,25 +1546,27 @@ object STM_NodeArrivalRateMultiType
       gMotifOrbitInfo += List(numVOrbit.toDouble / num_nonoverlapping_m)
     } else if (motifName.equalsIgnoreCase("triad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_vertex :RDD[(Int,Set[Int])]  = motif_edges
+      val orbit_vertex: RDD[(Int, Set[Int])] = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           val e3 = edge_arr(2).split("_")
-          Iterator((1, Set(e1(0).toInt)), (2, Set(e2(0).toInt)), (3, Set(e3(0).toInt)))
+          Iterator((1, Set(e1(0).toInt)),
+                   (2, Set(e2(0).toInt)),
+                   (3, Set(e3(0).toInt)))
         })
         .distinct()
 
-      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) =>  x++y).collect
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y).collect
 
       /*
-      * Write orbit_vertex_association file
+       * Write orbit_vertex_association file
        */
       val orbitIDMapMotif = gMotifNameToOrbitKeys(motifName)
       orbit_vertex_asso.foreach(ova => {
         gOrbtVtxAssoFWr.println(
           currItrID + "," + currWinID + "," +
-            + orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
+            +orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
         )
       })
       gOrbtVtxAssoFWr.flush()
@@ -1577,7 +1575,7 @@ object STM_NodeArrivalRateMultiType
        * Write orbit independence
        */
       val orbit_count: Map[Int, Int] = orbit_vertex_asso
-      .map(x => (x._1, x._2.size))
+        .map(x => (x._1, x._2.size))
         .toMap
 
       val orbit_independence = List(
@@ -1657,29 +1655,29 @@ object STM_NodeArrivalRateMultiType
   }
 
   def getEdgeOffsetMeanSDev(
-    reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[eTime]]
-  ):ArrayBuffer[timeOffset] =
-  {
-    reuse_temporal_offset_info.map(edgeInfo =>{
+      reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[eTime]]
+  ): ArrayBuffer[timeOffset] = {
+    reuse_temporal_offset_info.map(edgeInfo => {
       val eSum = edgeInfo.sum
       val eCnt = edgeInfo.length
-      val eMean :Long  = eSum/eCnt
+      val eMean: Long = eSum / eCnt
       val devs = edgeInfo.map(offset => (offset - eMean) * (offset - eMean))
-      val stddev = Math.sqrt(devs.sum / (eCnt - 1))
-      new timeOffset(eMean,stddev,eCnt)
+      val stddev = if (eCnt == 1) Math.sqrt(devs.sum / eCnt)
+                   else Math.sqrt(devs.sum / (eCnt - 1))
+      new timeOffset(eMean, stddev, eCnt)
     })
   }
 
-def find4EdgNVtxMotifs(
-    tmpG: GraphFrame,
-    motifName: String,
-    et1: eType,
-    et2: eType,
-    et3: eType,
-    et4: eType,
-    gETypes: Array[eType],
-    num_motif_nodes: Int,
-    num_motif_edges: Int
+  def find4EdgNVtxMotifs(
+      tmpG: GraphFrame,
+      motifName: String,
+      et1: eType,
+      et2: eType,
+      et3: eType,
+      et4: eType,
+      gETypes: Array[eType],
+      num_motif_nodes: Int,
+      num_motif_edges: Int
   ): RDD[(vertexId, vertexId, vertexId, eTime)] = {
 
     val spark = SparkSession.builder().getOrCreate()
@@ -1877,7 +1875,7 @@ def find4EdgNVtxMotifs(
     println("quad time" + gOffsetInfo)
     // Get time offset infor
     val cnt_validMotifs = true_mis_set_rdd.count()
-  updateEdgeOffset(true_mis_set_rdd,num_motif_edges)
+    updateEdgeOffset(true_mis_set_rdd, num_motif_edges)
 
     validMotifsArray
 
@@ -1926,10 +1924,10 @@ def find4EdgNVtxMotifs(
   }
 
   def get_edge_time_offset_info_from_mis_motifs(
-    num_motif_edges: Int,
-    mis_set: RDD[String]
+      num_motif_edges: Int,
+      mis_set: RDD[String]
   ): ArrayBuffer[ArrayBuffer[Long]] = {
-    val reuse_temporal_offset_info :ArrayBuffer[ArrayBuffer[Long]] =
+    val reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[Long]] =
       mis_set
         .map(motifid => {
 
@@ -1941,8 +1939,8 @@ def find4EdgNVtxMotifs(
             all_edges_arrs.append(all_edges_ids(i).split("_"))
           }
 
-          val local_reuse_temporal_offset_info:ArrayBuffer[ArrayBuffer[Long]] =
-            ArrayBuffer(ArrayBuffer.fill(num_motif_edges - 1)(0))
+          val local_reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[Long]] =
+            ArrayBuffer.fill(num_motif_edges - 1)(ArrayBuffer[Long]())
 
           /*
            * if we have 3 edges then we have 2 offset values. between e2e1, and e3e2
@@ -1955,8 +1953,8 @@ def find4EdgNVtxMotifs(
       local_reuse_temporal_offset_info(1) = t3 - t2
            */
           for (i <- 0 until num_motif_edges - 1) {
-            local_reuse_temporal_offset_info(i) =
-              ArrayBuffer(all_edges_arrs(i + 1)(3).toLong - all_edges_arrs(i)(3).toLong)
+            local_reuse_temporal_offset_info(i) = ArrayBuffer(
+              all_edges_arrs(i + 1)(3).toLong - all_edges_arrs(i)(3).toLong)
 
           }
           local_reuse_temporal_offset_info
@@ -1971,7 +1969,7 @@ def find4EdgNVtxMotifs(
            */
           var res = ArrayBuffer[ArrayBuffer[Long]]()
           for (i <- 0 until arr1.length)
-            res += (arr1(i)  ++ arr2(i))
+            res += (arr1(i) ++ arr2(i))
           //append two arraybuffers
           //ArrayBuffer((arr1(0) + arr2(0)),
           //          (arr1(1) + arr2(1)))
@@ -1981,7 +1979,7 @@ def find4EdgNVtxMotifs(
   }
 
   def get_nonoverlapping_motif_inpartition(
-    selctedMotifEdges: DataFrame
+      selctedMotifEdges: DataFrame
   ): RDD[Row] = {
     selctedMotifEdges.rdd.mapPartitionsWithIndex((partId, localrdd) => {
       // It is a local computation on an executor
@@ -2006,7 +2004,7 @@ def find4EdgNVtxMotifs(
   }
 
   def get_v_distinct_cnt_from_true_mis_edges(
-    validMotifsArray: RDD[(Int, Int, Int, Long)]
+      validMotifsArray: RDD[(Int, Int, Int, Long)]
   ): Long = {
     validMotifsArray
       .flatMap(tmie => Iterator(tmie._1, tmie._3))
@@ -2015,11 +2013,11 @@ def find4EdgNVtxMotifs(
   }
 
   def topKStar(
-    tmpG: GraphFrame,
-    num_motif_nodes: Int,
-    num_motif_edges: Int,
-    gSQLContext: SQLContext,
-    motifName: String
+      tmpG: GraphFrame,
+      num_motif_nodes: Int,
+      num_motif_edges: Int,
+      gSQLContext: SQLContext,
+      motifName: String
   ): (Map[Int, Int], ArrayBuffer[Long], GraphFrame) = {
     val outheader = Array("id", "outDegree")
     val inheader = Array("id", "inDegree")
@@ -2113,7 +2111,8 @@ def find4EdgNVtxMotifs(
     }
     val cnt_validMotifs_star = true_mis_set_rdd_star.count
 
-    val avg_reuse_temporal_offset_info = getGlobalTimeOffsetList(true_mis_set_rdd_star,num_motif_edges)
+    val avg_reuse_temporal_offset_info =
+      getGlobalTimeOffsetList(true_mis_set_rdd_star, num_motif_edges)
 
     //true_mis_set_rdd_star.collect().foreach(s=>println(s))
     val validMotifsArray_star: RDD[(Int, Int, Int, Long)] =
@@ -2327,11 +2326,12 @@ def find4EdgNVtxMotifs(
     val cnt_validMotifs = true_mis_set_rdd.count()
 
     val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
-      getGlobalTimeOffsetList(true_mis_set_rdd,num_motif_edges)
+      getGlobalTimeOffsetList(true_mis_set_rdd, num_motif_edges)
     gOffsetInfo += (avg_reuse_temporal_offset_info.toList
       .zip(avg_reuse_temporal_offset_info.toList))
       .map { case (x, y) => x + y }
 
+    println("edge offset at triad", gOffsetInfo)
     validMotifsArray
   }
 
@@ -2367,41 +2367,41 @@ def find4EdgNVtxMotifs(
   }
 
   def getGlobalTimeOffsetList(true_mis_set_rdd: RDD[String],
-                              num_motif_edges: eType): ArrayBuffer[Long] =
-  {
+                              num_motif_edges: eType): ArrayBuffer[Long] = {
     val reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[Long]] =
       get_edge_time_offset_info_from_mis_motifs(
-                                                 num_motif_edges,
-                                                 true_mis_set_rdd
-                                               )
+        num_motif_edges,
+        true_mis_set_rdd
+      )
 
     //Create timeOffset objects. reuse_temporal_offset_info should be either of
     // size 2, 3, or 4. edgeInfo is a ArrayBuffer[Long] for a each edge in the
     // temporal motif
     val timeOffsetInfo: ArrayBuffer[timeOffset] = getEdgeOffsetMeanSDev(
-                                                                         reuse_temporal_offset_info
-                                                                       )
+      reuse_temporal_offset_info)
 
     val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
       timeOffsetInfo.flatMap(
-                              to => ArrayBuffer(to.mean.toLong, to.stdDev.toLong,to
-                                .populationSize.toLong)
-                            )
+        to =>
+          ArrayBuffer(to.mean.toLong,
+                      to.stdDev.toLong,
+                      to.populationSize.toLong)
+      )
     avg_reuse_temporal_offset_info
   }
 
   /*
- * Update global gOffsetInfo
- */
+   * Update global gOffsetInfo
+   */
   def updateEdgeOffset(true_mis_set_rdd: RDD[String],
-                     num_motif_edges: eType) = {
+                       num_motif_edges: eType) = {
 
-    val avg_reuse_temporal_offset_info:
-      ArrayBuffer[Long] = getGlobalTimeOffsetList(true_mis_set_rdd,num_motif_edges)
+    val avg_reuse_temporal_offset_info: ArrayBuffer[Long] =
+      getGlobalTimeOffsetList(true_mis_set_rdd, num_motif_edges)
 
-  gOffsetInfo += avg_reuse_temporal_offset_info.toList
+    gOffsetInfo += avg_reuse_temporal_offset_info.toList
 
-}
+  }
 
   def find2EdgNVtxMotifs(tmpG: GraphFrame,
                          motifName: String,
@@ -2562,14 +2562,13 @@ def find4EdgNVtxMotifs(
 
     // Get time offset infor
     val cnt_validMotifs = true_mis_set_rdd.count()
-    updateEdgeOffset(true_mis_set_rdd,num_motif_edges)
+    updateEdgeOffset(true_mis_set_rdd, num_motif_edges)
 
     true_mis_set_rdd.unpersist(true)
     println(" Finishing 2e3v motif" + gMotifInfo)
     println(" Finishing 2e3v timeoffset" + gOffsetInfo)
     validMotifsArray
   }
-
 
   def findDyad(g: GraphFrame,
                motifName: String,
@@ -2598,7 +2597,7 @@ def find4EdgNVtxMotifs(
           num_motif_nodes,
           num_motif_edges
         ).cache()
-        write_motif_vertex_association_file(validMotifsArray,motifName)
+        write_motif_vertex_association_file(validMotifsArray, motifName)
 
         val uniqeEDF = sqlc
           .createDataFrame(validMotifsArray)
