@@ -31,9 +31,10 @@ object RandomTemporalNetworkVariation {
     {
       val SEED = 10000 * v
       val ran = new Random(SEED)
-      val MAX_STRETCH = (86400 * v)
-      val MUE :Int = MAX_STRETCH / 2 // one day
-      val SIGMA = MAX_STRETCH/6
+
+      val MAX_STRETCH =  86400 // 1 day
+      val MUE :Int = 0 // this makes sure the mean is around the original time
+      val SIGMA = MAX_STRETCH / 6 // this makes sure the variation is -1/2 day to +1/2 day
       val outFileName = "G"+v+".csv"
       val outPWr = new PrintWriter(new File(outFileName))
       println("######## Writing file " + outFileName)
@@ -42,13 +43,11 @@ object RandomTemporalNetworkVariation {
       for (line <- source.getLines())
       {
         val lineArr = line.split(sep)
-        val gaussianStetch = ran.nextGaussian()*SIGMA+MUE
-        val a = ran.nextDouble()
-        val newTime =  (a * lineArr(3).toLong + gaussianStetch).toLong
-//          if (ran.nextDouble() < .5)
-//            (a * lineArr(3).toLong - gaussianStetch).toLong
-//          else
-//            (a * lineArr(3).toLong + gaussianStetch).toLong
+        val baseGaussianStretch = ran.nextGaussian()
+        val gaussianStretch = baseGaussianStretch*SIGMA+MUE
+        val possibleNewTime =  (v * lineArr(3).toLong + gaussianStretch).toLong
+        val newTime = if(possibleNewTime < 0) lineArr(3).toLong
+                      else possibleNewTime
 
         outPWr.println(lineArr(0) + sep + lineArr(1) + sep + lineArr(2) + sep + newTime)
       }
