@@ -21,11 +21,11 @@ object RandomTemporalNetwork {
     val sep: String =
       if (clo.getOrElse("-separator", ",").equalsIgnoreCase("\\t"))
         '\t'.toString
-      else clo.getOrElse("-separator", ",")
+      else clo.getOrElse("-separator", " ")
     println("sep is " + sep)
     val outFile = clo.getOrElse("-out_file", "G0.csv")
 
-    val population : Int = clo.getOrElse("-input_population","1000").toInt
+    val population : Int = clo.getOrElse("-input_population","100").toInt
     val duration_sec : Int = clo.getOrElse("-input_duration_sec","86400").toInt
     val outPWr = new PrintWriter(new File(outFile))
     /*
@@ -42,7 +42,7 @@ object RandomTemporalNetwork {
         if(ran.nextDouble() >= .5)
           {
             val dst = ran.nextInt(population)
-            outPWr.println(v + sep + 1+ sep + dst + sep + t.toLong)
+            outPWr.println(v + sep + dst + sep + t.toLong)
           }
       }
       outPWr.flush()

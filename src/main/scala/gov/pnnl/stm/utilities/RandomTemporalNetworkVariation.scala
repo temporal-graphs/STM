@@ -21,7 +21,7 @@ object RandomTemporalNetworkVariation {
     val sep: String =
       if (clo.getOrElse("-separator", ",").equalsIgnoreCase("\\t"))
         '\t'.toString
-      else clo.getOrElse("-separator", ",")
+      else clo.getOrElse("-separator", " ")
     println("sep is " + sep)
     val baseGraph = clo.getOrElse("-input_file", "G0.csv")
     val numVariations = clo.getOrElse("-num_variations", "30").toInt
@@ -45,11 +45,11 @@ object RandomTemporalNetworkVariation {
         val lineArr = line.split(sep)
         val baseGaussianStretch = ran.nextGaussian()
         val gaussianStretch = baseGaussianStretch*SIGMA+MUE
-        val possibleNewTime =  (v * lineArr(3).toLong + gaussianStretch).toLong
-        val newTime = if(possibleNewTime < 0) lineArr(3).toLong
+        val possibleNewTime =  (v * lineArr(2).toLong + gaussianStretch).toLong
+        val newTime = if(possibleNewTime < 0) lineArr(2).toLong
                       else possibleNewTime
 
-        outPWr.println(lineArr(0) + sep + lineArr(1) + sep + lineArr(2) + sep + newTime)
+        outPWr.println(lineArr(0)  + sep + lineArr(1) + sep + newTime)
       }
       source.close()
       outPWr.flush()
