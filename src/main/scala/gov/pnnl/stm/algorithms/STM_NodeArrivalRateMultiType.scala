@@ -45,6 +45,7 @@ object STM_NodeArrivalRateMultiType {
   println("######OBJECT CREATED ; STM_NodeArrivalRateMultiType ######")
   val t1 = System.nanoTime()
   val prefix_annotation = "kdd"
+  val gGraphEmebdding = ListBuffer[Object]()
   val gMotifInfo = ListBuffer.empty[List[Int]]
   val gMotifOrbitInfo = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
@@ -614,6 +615,7 @@ object STM_NodeArrivalRateMultiType {
     val normMotifProb: ListBuffer[Double] =
       gMotifInfo.flatMap(f0 => f0.map(f1 => f1.toDouble / duration))
     gMotifProbFWr.println(normMotifProb.mkString("\n"))
+
     //gMotifProbFile.println("duration in milliseconds=" + duration)
 
     val offsetProb: ListBuffer[Long] =

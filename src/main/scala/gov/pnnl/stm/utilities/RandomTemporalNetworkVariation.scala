@@ -23,7 +23,7 @@ object RandomTemporalNetworkVariation {
         '\t'.toString
       else clo.getOrElse("-separator", " ")
     println("sep is " + sep)
-    val baseGraph = clo.getOrElse("-input_file", "G0.csv")
+    val baseGraph = clo.getOrElse("-input_file", "GSmall0.csv")
     val numVariations = clo.getOrElse("-num_variations", "30").toInt
 
 
@@ -35,7 +35,7 @@ object RandomTemporalNetworkVariation {
       val MAX_STRETCH =  86400 // 1 day
       val MUE :Int = 0 // this makes sure the mean is around the original time
       val SIGMA = MAX_STRETCH / 6 // this makes sure the variation is -1/2 day to +1/2 day
-      val outFileName = "G"+v+".csv"
+      val outFileName = "GSmall"+v+".csv"
       val outPWr = new PrintWriter(new File(outFileName))
       println("######## Writing file " + outFileName)
 

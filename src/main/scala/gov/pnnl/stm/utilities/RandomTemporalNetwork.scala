@@ -23,7 +23,7 @@ object RandomTemporalNetwork {
         '\t'.toString
       else clo.getOrElse("-separator", " ")
     println("sep is " + sep)
-    val outFile = clo.getOrElse("-out_file", "G0.csv")
+    val outFile = clo.getOrElse("-out_file", "GSmall0.csv")
 
     val population : Int = clo.getOrElse("-input_population","100").toInt
     val duration_sec : Int = clo.getOrElse("-input_duration_sec","86400").toInt
@@ -39,7 +39,7 @@ object RandomTemporalNetwork {
     population_rdd.foreach(v=>{
       for(t <- 0 to duration_sec)
       {
-        if(ran.nextDouble() >= .5)
+        if(ran.nextDouble() <= .01)
           {
             val dst = ran.nextInt(population)
             outPWr.println(v + sep + dst + sep + t.toLong)
