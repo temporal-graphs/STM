@@ -440,10 +440,6 @@ object STM_NodeArrivalRateMultiType {
                 break
 
               write_motif_vertex_association_file(validMotifsArray, motifName)
-//              if (motifName.equalsIgnoreCase("quad"))
-//                write_motif_vertex_association_file(validMotifsArray, "quad")
-//              else if (motifName.equalsIgnoreCase("twoloop"))
-//                write_motif_vertex_association_file(validMotifsArray, "twoloop")
 
               val uniqeEDF = sqlc
                 .createDataFrame(validMotifsArray)
@@ -466,7 +462,6 @@ object STM_NodeArrivalRateMultiType {
                 )
                 .distinct
                 .toDF("id", "name")
-              import sqlc.implicits._
               val newGraph = GraphFrame(newVRDD, newEDF)
               tmpG.unpersist(true)
               tmpG = newGraph.cache()
@@ -805,7 +800,8 @@ object STM_NodeArrivalRateMultiType {
             }
             gMotifInfo.clear
             gOffsetInfo.clear
-            //both are reset becuase for next local graph motif computation, they should start with empty values
+            //both are reset because for next local graph motif computation, they should start
+            // with empty values
           }
 
       }
