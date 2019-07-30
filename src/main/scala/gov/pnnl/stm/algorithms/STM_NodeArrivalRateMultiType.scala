@@ -323,7 +323,6 @@ object STM_NodeArrivalRateMultiType {
         .cache()
 
     val iso_v_cnt = isolated_v.count
-    println("iso count is ", iso_v_cnt)
 
     writeMotifVertexAssoication(isolated_v.collect(), motifName)
 
@@ -331,7 +330,6 @@ object STM_NodeArrivalRateMultiType {
 
     write_motif_independence(iso_v_cnt, iso_v_cnt)
 
-    gMotifAllProb_IndividualFWr.println("Iso_V", iso_v_cnt)
     gMotifInfo += List(iso_v_cnt.toInt)
     println(gMotifInfo)
     //gOffsetInfo += List(0L)
@@ -380,7 +378,6 @@ object STM_NodeArrivalRateMultiType {
 
     val newe = g.edges.except(selctedMotifEdges)
     val newv = g.vertices.except(v_deg_1)
-    println("in 2 iso edge")
 
     write_vertex_independence(iso_edge_cnt * 2, iso_edge_cnt * 2)
     write_motif_independence(iso_edge_cnt, iso_edge_cnt)
@@ -407,7 +404,6 @@ object STM_NodeArrivalRateMultiType {
                 println("graph quad sizev ", g.vertices.count)
                 println("graph size e", g.edges.count)
               }
-              println("Motif is ", motifName)
               val validMotifsArray: RDD[(Int, Int, Int, Long)] =
                 if (motifName
                       .equalsIgnoreCase("twoloop"))
@@ -510,7 +506,6 @@ object STM_NodeArrivalRateMultiType {
       .toDF("src", "type", "dst", "time")
       .cache()
 
-    println("eDF size is ", eDF.count())
     // Create a GraphFrame
     import org.graphframes.GraphFrame
     var g = GraphFrame(vDF, eDF).cache()
@@ -611,7 +606,6 @@ object STM_NodeArrivalRateMultiType {
       gMotifInfo.flatMap(f0 => f0.map(f1 => f1.toDouble / duration))
     gMotifProbFWr.println(normMotifProb.mkString("\n"))
 
-    //gMotifProbFile.println("duration in milliseconds=" + duration)
 
     val offsetProb: ListBuffer[Long] =
       gOffsetInfo.flatMap(f0 => f0.map(f1 => f1))
@@ -762,9 +756,6 @@ object STM_NodeArrivalRateMultiType {
                 .map(f1 => f1.toDouble / time_in_window)
                 .map(m => (m / window_prob(i)))
 
-              //offset info needs not to be normalized
-//              gOffsetInfo_itr_local =
-//                gOffsetInfo.flatten.map(m => (m / window_prob(i)).toLong)
               println(
                 "gmotif info is empty " + gMotifInfo_itr_local.mkString("&&")
               )
@@ -929,7 +920,6 @@ object STM_NodeArrivalRateMultiType {
     write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
 
     write_motif_vertex_association_file(sim_e.keys, "simulatanious")
-    println("distict graph size is ", inputSimpleTAG.distinct().count())
     inputSimpleTAG.distinct()
   }
   Logger.getLogger("org").setLevel(Level.OFF)
@@ -1018,7 +1008,6 @@ object STM_NodeArrivalRateMultiType {
          */
         val validMotifs =
           selctedMotifEdges.rdd.setName("validMotifMultiEdge").cache()
-        println("overlapping multi-eddge ", validMotifs.count())
         /* get "representative edge" of the multi edges. for a given src,dst edge this is the
          * edge with lowest timestamp We create a set of edges for a given source-dst pair a
          * nd at the same time compute the smallest edge.  The first element i.e. the set gives
@@ -1120,7 +1109,7 @@ object STM_NodeArrivalRateMultiType {
         multi_edge_nodes.foreach(v => multi_edge_node_file.println(v))
         multi_edge_node_file.flush()
 
-        println("tatal multi edges are : ", total_multi_edges)
+        println("total multi edges are : ", total_multi_edges)
         println("avg avg_offset_time is ", eMean)
         val multi_edges_df = sqlc.createDataFrame(multi_edges_to_remove)
 
@@ -1132,7 +1121,6 @@ object STM_NodeArrivalRateMultiType {
           reuse_node_info.values.toList
         )
         gMotifInfo += reuse_node_info.values.toList
-        println(" multi edge " + gMotifInfo)
 
         // Get time offset information
         /*
@@ -1249,7 +1237,6 @@ object STM_NodeArrivalRateMultiType {
       tmpG.unpersist(true)
       g.unpersist(true)
       tmpG = newGraph
-      println("self loop done" + gMotifInfo)
     }
     tmpG
   }
@@ -1286,10 +1273,7 @@ object STM_NodeArrivalRateMultiType {
                 symmetry: Boolean = false,
                 gETypes: Array[Int]): GraphFrame = {
 
-    println(
-      "check if graph g v is chached " + g.vertices.storageLevel.useMemory
-    )
-    println("check if graph g e is chached " + g.edges.storageLevel.useMemory)
+//    println("check if graph g e is chached " + g.edges.storageLevel.useMemory)
 
     var tmpG = g
     for (et1 <- gETypes.indices) {
@@ -1763,7 +1747,6 @@ object STM_NodeArrivalRateMultiType {
       .cache()
 
     val num_overlapping_m = selctedMotifEdges.count()
-    println("quad total non overlapping motifs are : ", num_overlapping_m)
     /*
      *selctedMotifEdges.show(100)
      * +---+----+---+----------+---+----+---+----------+---+----+---+----------+---+----+---+----------+
@@ -1915,9 +1898,6 @@ object STM_NodeArrivalRateMultiType {
       .map(motif_instance => MaximumIndependentSet.getMotifId(motif_instance))
 
     val true_mis_set_rdd: RDD[String] = gSC.parallelize(true_mis_set)
-    println("count of non overlaping motifs " + mis_set.count())
-    println("count of TRUE non overlaping motifs " + true_mis_set_rdd.count())
-    //true_mis_set_rdd.collect().foreach(m=>out_triad_nonoverlappinginstance_file.println(m))
     true_mis_set_rdd
   }
 
@@ -2112,7 +2092,6 @@ object STM_NodeArrivalRateMultiType {
     val avg_reuse_temporal_offset_info =
       getGlobalTimeOffsetList(true_mis_set_rdd_star, num_motif_edges)
 
-    //true_mis_set_rdd_star.collect().foreach(s=>println(s))
     val validMotifsArray_star: RDD[(Int, Int, Int, Long)] =
       get_edges_from_mis_motif(true_mis_set_rdd_star).cache()
 
@@ -2217,7 +2196,6 @@ object STM_NodeArrivalRateMultiType {
     )
 
     val num_overlap_motifs = overlappingMotifs.count()
-    println("num_overlap_motifs count is", num_overlap_motifs)
     val selctedMotifEdges_local_nonoverlap =
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
 
@@ -2509,8 +2487,6 @@ object STM_NodeArrivalRateMultiType {
       )
       gHigherGraphFWriter.flush()
     }
-    println("overlapping graph e", valid_motif_overlap_graph.edges.count)
-    println("overlapping graph v", valid_motif_overlap_graph.vertices.count)
     val mis_set: RDD[String] =
       MaximumIndependentSet.getMISGreedy(valid_motif_overlap_graph).cache()
     /* mis-set is:
@@ -2529,8 +2505,6 @@ object STM_NodeArrivalRateMultiType {
     )
 
     valid_motif_overlap_graph.unpersist(true)
-    println("2e 3v mis set size is " + mis_set.count())
-    println("2e 3v mis set size is " + true_mis_set_rdd.count())
 
     /*
      * construct motif from edges to compute their information content
@@ -2563,8 +2537,6 @@ object STM_NodeArrivalRateMultiType {
     updateEdgeOffset(true_mis_set_rdd, num_motif_edges)
 
     true_mis_set_rdd.unpersist(true)
-    println(" Finishing 2e3v motif" + gMotifInfo)
-    println(" Finishing 2e3v timeoffset" + gOffsetInfo)
     validMotifsArray
   }
 
@@ -2783,7 +2755,7 @@ object STM_NodeArrivalRateMultiType {
       val directory = new File(".")
       println("curr dir is ", directory.getAbsolutePath)
       val pattern = "^.*" + t1 + ".*.txt$"
-      System.out.println("\nFiles that match regular expression: " + pattern)
+      println("\nFiles that match regular expression: " + pattern)
       val filter: FileFilter = new RegexFileFilter("^.*" + t1 + ".*.txt$")
       val files = directory.listFiles(filter)
 
