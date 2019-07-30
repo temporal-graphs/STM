@@ -255,6 +255,14 @@ object STM_NodeArrivalRateMultiType {
 
     val num_iterations: Int = clo.getOrElse("-num_iterations", "3").toInt
 
+
+    val deltaLimit: Boolean = clo.getOrElse("-delta_limit", "false").toBoolean
+
+    val tDelta: Long = if(deltaLimit == true)
+              clo.getOrElse("-t_delta", "600").toLong
+    else
+      Long.MaxValue
+
     val gETypes =
       clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
 
@@ -287,7 +295,8 @@ object STM_NodeArrivalRateMultiType {
         sample_selection_prob,
         num_iterations,
         gETypes,
-        inputSimpleTAG
+        inputSimpleTAG,
+        tDelta
       )
       (res._1, res._2, avg_out_deg)
     } else {
@@ -390,7 +399,7 @@ object STM_NodeArrivalRateMultiType {
 
   def findQuad(g: GraphFrame,
                motifName: String,
-               gETypes: Array[eType]): GraphFrame = {
+               gETypes: Array[eType], tDelta: Long): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
@@ -416,7 +425,8 @@ object STM_NodeArrivalRateMultiType {
                     et4,
                     gETypes,
                     3,
-                    4
+                    4,
+                    tDelta
                   )
                 else
                   find4EdgNVtxMotifs(
@@ -428,7 +438,8 @@ object STM_NodeArrivalRateMultiType {
                     et4,
                     gETypes,
                     4,
-                    4
+                    4,
+                    tDelta
                   )
 
               //TODO: look at the need of this check and the return type
@@ -472,7 +483,8 @@ object STM_NodeArrivalRateMultiType {
 
   def findAllITeM(gETypes: Array[eType],
                   call_id_val: Int,
-                  initial_tag: SimpleTAGRDD): GraphFrame = {
+                  initial_tag: SimpleTAGRDD,
+    dDelta: Long): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
@@ -521,16 +533,16 @@ object STM_NodeArrivalRateMultiType {
     g = findIsolatedEdg(g, "isolatededge", gETypes)
     g = findNonSimMultiEdg(g, "multiedge", gETypes)
     g = findSelfLoop(g, "selfloop", gETypes)
-    g = findTriad(g, "triangle", SYMMETRY, gETypes).cache()
-    g = findTriad(g, "triad", ASYMMETRY, gETypes).cache()
-    g = findQuad(g, "twoloop", gETypes).cache()
-    g = findQuad(g, "quad", gETypes)
-    g = findDyad(g, "loop", SYMMETRY, gETypes, 2, 2).cache()
-    g = findTriad(g, "outstar", SYMMETRY, gETypes).cache()
-    g = findTriad(g, "instar", SYMMETRY, gETypes).cache()
-    g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2).cache()
-    g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2).cache()
-    g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2).cache()
+    g = findTriad(g, "triangle", SYMMETRY, gETypes,dDelta).cache()
+    g = findTriad(g, "triad", ASYMMETRY, gETypes,dDelta).cache()
+    g = findQuad(g, "twoloop", gETypes,dDelta).cache()
+    g = findQuad(g, "quad", gETypes,dDelta)
+    g = findDyad(g, "loop", SYMMETRY, gETypes, 2, 2,dDelta).cache()
+    g = findTriad(g, "outstar", SYMMETRY, gETypes,dDelta).cache()
+    g = findTriad(g, "instar", SYMMETRY, gETypes,dDelta).cache()
+    g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2,dDelta).cache()
+    g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2,dDelta).cache()
+    g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2,dDelta).cache()
     g = findResidualEdg(g, "residualedge", gETypes).cache()
 
     if (gDebug) {
@@ -567,7 +579,7 @@ object STM_NodeArrivalRateMultiType {
     }
 
     try {
-      val g = findAllITeM(gETypes, call_id, initial_simple_tag)
+      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration)
       if (gDebug) {
         println(gMotifInfo.toList)
         println("number of edges in last graph", g.edges.count)
@@ -641,7 +653,11 @@ object STM_NodeArrivalRateMultiType {
       sample_selection_prob: Double,
       num_iterations: Int,
       gETypes: Array[Int],
-      initial_simple_tag: SimpleTAGRDD
+      initial_simple_tag: SimpleTAGRDD,
+      tDelta:Long
+
+
+
   ): (ListBuffer[Double], ListBuffer[Long]) = {
 
     /*
@@ -727,7 +743,7 @@ object STM_NodeArrivalRateMultiType {
             )
             var call_id = 0
             try {
-              findAllITeM(gETypes, call_id, local_tag)
+              findAllITeM(gETypes, call_id, local_tag,tDelta)
             } catch {
               case e: Exception => {
                 println("\nERROR: Call id = " + call_id)
@@ -1271,7 +1287,7 @@ object STM_NodeArrivalRateMultiType {
   def findTriad(g: GraphFrame,
                 motifName: String,
                 symmetry: Boolean = false,
-                gETypes: Array[Int]): GraphFrame = {
+                gETypes: Array[Int],tDelta: Long): GraphFrame = {
 
 //    println("check if graph g e is chached " + g.edges.storageLevel.useMemory)
 
@@ -1296,7 +1312,8 @@ object STM_NodeArrivalRateMultiType {
                   et3,
                   gETypes,
                   4,
-                  3
+                  3,
+                  tDelta
                 )
               else
                 find3EdgNVtxMotifs(
@@ -1308,7 +1325,8 @@ object STM_NodeArrivalRateMultiType {
                   et3,
                   gETypes,
                   3,
-                  3
+                  3,
+                  tDelta
                 )
             if (validMotifsArray.isEmpty)
               break
@@ -1659,7 +1677,8 @@ object STM_NodeArrivalRateMultiType {
       et4: eType,
       gETypes: Array[eType],
       num_motif_nodes: Int,
-      num_motif_edges: Int
+      num_motif_edges: Int,
+      tDelta : Long
   ): RDD[(vertexId, vertexId, vertexId, eTime)] = {
 
     val spark = SparkSession.builder().getOrCreate()
@@ -2123,7 +2142,8 @@ object STM_NodeArrivalRateMultiType {
                          et3: eType,
                          gETypes: Array[Int],
                          num_motif_nodes: Int,
-                         num_motif_edges: Int): RDD[(Int, Int, Int, Long)] = {
+                         num_motif_edges: Int,
+    tDelta : Long): RDD[(Int, Int, Int, Long)] = {
     val spark = SparkSession.builder().getOrCreate()
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
@@ -2152,6 +2172,9 @@ object STM_NodeArrivalRateMultiType {
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("a.id < c.id")
+          .filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
+          .filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
+          .filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
           // reducing candidate two loop i.e. azc or cza=> pick only azc
           // time based restriction wont work for this motif type
           //.filter("e1.time < e2.time")
@@ -2168,6 +2191,9 @@ object STM_NodeArrivalRateMultiType {
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("e1.time < e2.time")
+          .filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
+          .filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
+          .filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
           .cache()
       //.filter("e2.time < e3.time").cache()
       else
@@ -2179,6 +2205,9 @@ object STM_NodeArrivalRateMultiType {
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
+          .filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
+          .filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
+          .filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
           .cache()
     val selectEdgeArr = Array(
       "e1.src",
@@ -2386,7 +2415,8 @@ object STM_NodeArrivalRateMultiType {
                          et2: eType,
                          gETypes: Array[Int],
                          num_motif_nodes: Int,
-                         num_motif_edges: Int): RDD[(Int, Int, Int, Long)] = {
+                         num_motif_edges: Int,
+    tDelta : Long): RDD[(Int, Int, Int, Long)] = {
     println(" Staring 2e3v motif nV, vE", num_motif_nodes, num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
     val sc = spark.sparkContext
@@ -2545,7 +2575,8 @@ object STM_NodeArrivalRateMultiType {
                symmetry: Boolean = false,
                gETypes: Array[Int],
                num_motif_nodes: Int,
-               num_motif_edges: Int): GraphFrame = {
+               num_motif_edges: Int,
+    tDelta: Long): GraphFrame = {
     var tmpG = g
     for (et1 <- gETypes.indices) {
       for (et2 <- gETypes.indices) {
@@ -2565,7 +2596,8 @@ object STM_NodeArrivalRateMultiType {
           et2,
           gETypes,
           num_motif_nodes,
-          num_motif_edges
+          num_motif_edges,
+          tDelta
         ).cache()
         write_motif_vertex_association_file(validMotifsArray, motifName)
 
