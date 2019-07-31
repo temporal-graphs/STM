@@ -110,7 +110,7 @@ object STM_NodeArrivalRateMultiType {
   val gHigherGraphFWriter = new PrintWriter(
     new FileWriter(gHigherGraphFile, true)
   )
-  val gDebug = true
+  val gDebug = false
   val gHigherGOut = false
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
@@ -1708,7 +1708,7 @@ object STM_NodeArrivalRateMultiType {
 
     val filtere1e2 = "(e1.time - e2.time) < " + tDelta
     val filtere1e2_min = "(e1.time - e2.time) > -" + tDelta
-    val filtere2e3 = "(e2.time - e3time) < " + tDelta
+    val filtere2e3 = "(e2.time - e.3time) < " + tDelta
     val filtere2e3_min = "(e2.time - e3.time) > -" + tDelta
     val filtere3e4 = "(e3.time - e4.time) < " + tDelta
     val filtere3e4_min = "(e3.time - e4.time) > -" + tDelta
@@ -2180,7 +2180,7 @@ object STM_NodeArrivalRateMultiType {
 
     val filtere1e2 = "(e1.time - e2.time) < " + tDelta
     val filtere1e2_min = "(e1.time - e2.time) > -" + tDelta
-    val filtere2e3 = "(e2.time - e3time) < " + tDelta
+    val filtere2e3 = "(e2.time - e3.time) < " + tDelta
     val filtere2e3_min = "(e2.time - e3.time) > -" + tDelta
     val filtere3e1 = "(e3.time - e1.time) < " + tDelta
     val filtere3e1_min = "(e3.time - e1.time) > -" + tDelta
