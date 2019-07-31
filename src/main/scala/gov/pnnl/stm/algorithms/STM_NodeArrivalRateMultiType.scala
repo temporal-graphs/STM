@@ -1706,14 +1706,6 @@ object STM_NodeArrivalRateMultiType {
      *
      */
 
-    val filtere1e2 = "(e1.time - e2.time) < " + tDelta
-    val filtere1e2_min = "(e1.time - e2.time) > -" + tDelta
-    val filtere2e3 = "(e2.time - e3.time) < " + tDelta
-    val filtere2e3_min = "(e2.time - e3.time) > -" + tDelta
-    val filtere3e4 = "(e3.time - e4.time) < " + tDelta
-    val filtere3e4_min = "(e3.time - e4.time) > -" + tDelta
-    val filtere4e1 = "(e4.time - e1.time) < " + tDelta
-    val filtere4e1_min = "(e4.time - e1.time) > -" + tDelta
     val overlappingMotifs: Dataset[Row] =
       if (num_motif_nodes == 3)
         tmpG
@@ -1727,14 +1719,14 @@ object STM_NodeArrivalRateMultiType {
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("e4.type = " + gETypes(et4))
-          .filter(filtere1e2)
-          .filter(filtere1e2_min)
-          .filter(filtere2e3)
-          .filter(filtere2e3_min)
-          .filter(filtere3e4)
-          .filter(filtere3e4_min)
-        .filter(filtere4e1)
-          .filter(filtere4e1_min)
+          .filter("(e1.time - e2.time) < 600")
+          .filter("(e1.time - e2.time) > -600" )
+          .filter("(e2.time - e3.time) < 600")
+          .filter("(e2.time - e3.time) > -600" )
+          .filter("(e3.time - e4.time) < 600")
+          .filter("(e3.time - e4.time) > -600" )
+          .filter("(e4.time - e1.time) < 600")
+          .filter("(e4.time - e1.time) > -600" )
         .cache()
       //.filter("e1.time < e2.time")
       //.filter("e2.time < e3.time")
@@ -1756,14 +1748,14 @@ object STM_NodeArrivalRateMultiType {
           .filter("e3.type = " + gETypes(et3))
           .filter("e4.type = " + gETypes(et4))
           .filter("e1.time < e2.time")
-          .filter(filtere1e2)
-          .filter(filtere1e2_min)
-          .filter(filtere2e3)
-          .filter(filtere2e3_min)
-          .filter(filtere3e4)
-          .filter(filtere3e4_min)
-          .filter(filtere4e1)
-          .filter(filtere4e1_min)
+          .filter("(e1.time - e2.time) < 600")
+          .filter("(e1.time - e2.time) > -600" )
+          .filter("(e2.time - e3.time) < 600")
+          .filter("(e2.time - e3.time) > -600" )
+          .filter("(e3.time - e4.time) < 600")
+          .filter("(e3.time - e4.time) > -600" )
+          .filter("(e4.time - e1.time) < 600")
+          .filter("(e4.time - e1.time) > -600" )
           .cache()
     //.filter("e2.time < e3.time")
     //.filter("e3.time < e4.time").cache()
@@ -2178,12 +2170,19 @@ object STM_NodeArrivalRateMultiType {
       reuse_node_info_star += (i -> 0)
     var avg_reuse_temporal_offset_info_star = ArrayBuffer[Long]()
 
+    /*
     val filtere1e2 = "(e1.time - e2.time) < " + tDelta
     val filtere1e2_min = "(e1.time - e2.time) > -" + tDelta
     val filtere2e3 = "(e2.time - e3.time) < " + tDelta
     val filtere2e3_min = "(e2.time - e3.time) > -" + tDelta
     val filtere3e1 = "(e3.time - e1.time) < " + tDelta
     val filtere3e1_min = "(e3.time - e1.time) > -" + tDelta
+    .filter(filtere1e2)
+          .filter(filtere1e2_min)
+          does not work. SO adding every condition manually for GT benchmarking
+          TODO:
+     */
+
     val overlappingMotifs =
       if (num_motif_nodes == 4) {
 
@@ -2204,12 +2203,12 @@ object STM_NodeArrivalRateMultiType {
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("a.id < c.id")
-          .filter(filtere1e2)
-          .filter(filtere1e2_min)
-          .filter(filtere2e3)
-          .filter(filtere2e3_min)
-          .filter(filtere3e1)
-          .filter(filtere3e1_min)
+          .filter("(e1.time - e2.time) < 600")
+          .filter("(e1.time - e2.time) > -600" )
+          .filter("(e2.time - e3.time) < 600")
+          .filter("(e2.time - e3.time) > -600" )
+          .filter("(e3.time - e1.time) < 600")
+          .filter("(e3.time - e1.time) > -600" )
           //.filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
           //.filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
           //.filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
@@ -2229,12 +2228,12 @@ object STM_NodeArrivalRateMultiType {
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("e1.time < e2.time")
-          .filter(filtere1e2)
-          .filter(filtere1e2_min)
-          .filter(filtere2e3)
-          .filter(filtere2e3_min)
-          .filter(filtere3e1)
-          .filter(filtere3e1_min)
+          .filter("(e1.time - e2.time) < 600")
+          .filter("(e1.time - e2.time) > -600" )
+          .filter("(e2.time - e3.time) < 600")
+          .filter("(e2.time - e3.time) > -600" )
+          .filter("(e3.time - e1.time) < 600")
+          .filter("(e3.time - e1.time) > -600" )
           //.filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
           //.filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
           //.filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
@@ -2249,12 +2248,12 @@ object STM_NodeArrivalRateMultiType {
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
-          .filter(filtere1e2)
-          .filter(filtere1e2_min)
-          .filter(filtere2e3)
-          .filter(filtere2e3_min)
-          .filter(filtere3e1)
-          .filter(filtere3e1_min)
+          .filter("(e1.time - e2.time) < 600")
+          .filter("(e1.time - e2.time) > -600" )
+          .filter("(e2.time - e3.time) < 600")
+          .filter("(e2.time - e3.time) > -600" )
+          .filter("(e3.time - e1.time) < 600")
+          .filter("(e3.time - e1.time) > -600" )
           //.filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
           //.filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
           //.filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
@@ -2472,8 +2471,7 @@ object STM_NodeArrivalRateMultiType {
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
-    val filtere1e2 = "(e1.time - e2.time) < " + tDelta
-    val filtere1e2_min = "(e1.time - e2.time) > -" + tDelta
+
 
     val overlappingMotifs =
       if (num_motif_nodes == 2) {
@@ -2484,8 +2482,9 @@ object STM_NodeArrivalRateMultiType {
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
             .filter("e1.time < e2.time")
-            .filter(filtere1e2)
-            .filter(filtere1e2_min)
+            .filter("(e1.time - e2.time) < 600" )
+            .filter("(e1.time - e2.time) > -600" )
+
             .cache()
         else
           tmpG
@@ -2493,8 +2492,8 @@ object STM_NodeArrivalRateMultiType {
             .filter("a != b")
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
-            .filter(filtere1e2)
-            .filter(filtere1e2_min)
+            .filter("(e1.time - e2.time) < 600" )
+            .filter("(e1.time - e2.time) > -600" )
             .cache()
 
       } else {
@@ -2507,8 +2506,8 @@ object STM_NodeArrivalRateMultiType {
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
             .filter("e1.time < e2.time")
-            .filter(filtere1e2)
-            .filter(filtere1e2_min)
+            .filter("(e1.time - e2.time) < 600" )
+            .filter("(e1.time - e2.time) > -600" )
             .cache()
         else
           tmpG
@@ -2518,8 +2517,8 @@ object STM_NodeArrivalRateMultiType {
             .filter("c != a")
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
-            .filter(filtere1e2)
-            .filter(filtere1e2_min)
+            .filter("(e1.time - e2.time) < 600" )
+            .filter("(e1.time - e2.time) > -600" )
             .cache()
       }
     val selectEdgeArr = Array(
