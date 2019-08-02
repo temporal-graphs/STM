@@ -79,17 +79,17 @@ object STM_NodeArrivalRateMultiType {
     t1 + "VertexBirth_" + prefix_annotation + ".txt"
   )
   val gVertexBirthFWriter = new PrintWriter(gVertexBirthFile)
-  val gMotifIndependenceFile = new File(
+  val gMotifIndFile = new File(
     t1 + "Motif_Independence_" + prefix_annotation + ".txt"
   )
-  val gMotifIndependenceFWr = new PrintWriter(
-    new FileWriter(gMotifIndependenceFile, true)
+  val gMotifIndFWr = new PrintWriter(
+    new FileWriter(gMotifIndFile, true)
   )
-  val gVertexIndependenceFile = new File(
+  val gVtxIndFile = new File(
     t1 + "Vertex_Independence_" + prefix_annotation + ".txt"
   )
-  val gVertexIndependenceFWr = new PrintWriter(
-    new FileWriter(gVertexIndependenceFile, true)
+  val gVtxIndFWr = new PrintWriter(
+    new FileWriter(gVtxIndFile, true)
   )
   val gOrbtVtxAssoFile = new File(
     t1 + "Orbit_Association_" + prefix_annotation + ".txt"
@@ -713,10 +713,10 @@ object STM_NodeArrivalRateMultiType {
         if ((rn.nextDouble() < sample_selection_prob) || currWinID == 0) //forcing i==0 so that atleast one is picked
           {
             println(" i is " + i)
-            gVertexIndependenceFWr.println(
+            gVtxIndFWr.println(
               "num_v_nonverlapping,num_v_max,v_independence_" + itr + "_" + i
             )
-            gMotifIndependenceFWr.println(
+            gMotifIndFWr.println(
               "num_total_motif,num_ind_motif," +
                 "motif_independence_" + itr + "_" + i
             )
@@ -878,6 +878,14 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
+
+        //write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
+
+        // TODO : Make sure it is written even for empty simultanious edges
+        // write_motif_vertex_association_file(sim_e.keys, "simulatanious")
+
         return inputSimpleTAG
       }
     } catch {
@@ -890,6 +898,10 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
+        write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
+
+        write_motif_vertex_association_file(sim_e.keys, "simulatanious")
+
         return inputSimpleTAG
 
     }
@@ -1815,7 +1827,9 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1 }
+        gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
         return sc.emptyRDD
       }
     } catch {
@@ -1828,7 +1842,9 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1 }
+        gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
         return sc.emptyRDD
 
     }
@@ -2285,7 +2301,9 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1L }
+        gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
         return sc.emptyRDD
       }
     } catch {
@@ -2298,7 +2316,9 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1L }
+        gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
         return sc.emptyRDD
       }
     }
@@ -2541,7 +2561,9 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1 }
+        gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
         return sc.emptyRDD
       }
     } catch {
@@ -2554,7 +2576,9 @@ object STM_NodeArrivalRateMultiType {
           List.fill(num_motif_nodes + 1) { 0 }
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
-        gOffsetInfo += List.fill(num_motif_edges - 1) { -1 }
+        gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
+        write_vertex_independence(0,0)
+        write_motif_independence(0,0)
         return sc.emptyRDD
       }
     }
@@ -2741,6 +2765,12 @@ object STM_NodeArrivalRateMultiType {
         if (selctedMotifEdges.head(1).isEmpty) {
           gMotifAllProb_IndividualFWr.println("redi e", List(0))
           gMotifInfo += List(0)
+
+          // vertext INDE is always 1 as these are residual edgea and all the v will be distict
+          // If not distinct then would have been part of an earlier motif
+          // Same for motif_independen
+          write_vertex_independence(0,0)
+          write_motif_independence(0,0)
           //gOffsetInfo += List(0L)
           return tmpG
         }
@@ -2751,6 +2781,8 @@ object STM_NodeArrivalRateMultiType {
           println("\n Exception is  " + sw.toString())
           gMotifAllProb_IndividualFWr.println("redi e", List(0))
           gMotifInfo += List(0)
+          write_vertex_independence(0,0)
+          write_motif_independence(0,0)
           //gOffsetInfo += List(0L)
           return tmpG
         }
@@ -2802,7 +2834,7 @@ object STM_NodeArrivalRateMultiType {
         .toInt
 
       write_motif_independence(num_residual_edges, num_residual_edges)
-      write_motif_independence(num_residual_edges * 2, num_residual_edges * 2)
+      write_vertex_independence(num_residual_edges * 2, num_residual_edges * 2)
       // total number of nodes in residual edges are 2*number of edges because IF NOT they are
       // not residual edge but a wedge
       val reused_node_cnt =
@@ -2840,8 +2872,8 @@ object STM_NodeArrivalRateMultiType {
       moveFileInner(gOffsetFile)
       moveFileInner(gOffsetAllFile)
       moveFileInner(gVertexBirthFile)
-      moveFileInner(gMotifIndependenceFile)
-      moveFileInner(gVertexIndependenceFile)
+      moveFileInner(gMotifIndFile)
+      moveFileInner(gVtxIndFile)
       moveFileInner(gHigherGraphFile)
 
       val directory = new File(".")
@@ -2867,20 +2899,20 @@ object STM_NodeArrivalRateMultiType {
   def write_motif_independence(overlapping_cnt: Long,
                                non_overlapping_cnt: Long): Unit = {
     // write motif uniqueness file
-    gMotifIndependenceFWr.println(
+    gMotifIndFWr.println(
       overlapping_cnt + "," +
         non_overlapping_cnt + "," +
         non_overlapping_cnt.toDouble / overlapping_cnt.toDouble
     )
-    gMotifIndependenceFWr.flush()
+    gMotifIndFWr.flush()
   }
 
   def write_vertex_independence(num_v_nonoverlapping: Long,
                                 num_v_max_possible: Long) = {
-    gVertexIndependenceFWr.println(
+    gVtxIndFWr.println(
       num_v_nonoverlapping + "," + num_v_max_possible + "," +
         num_v_nonoverlapping.toDouble / num_v_max_possible.toDouble
     )
-    gVertexIndependenceFWr.flush()
+    gVtxIndFWr.flush()
   }
 }
