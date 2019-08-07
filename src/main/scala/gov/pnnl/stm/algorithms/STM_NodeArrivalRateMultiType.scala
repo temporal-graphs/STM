@@ -62,6 +62,13 @@ object STM_NodeArrivalRateMultiType {
     t1 + "MotifOrbit_Independence_" + prefix_annotation + ".txt"
   )
   val gMotifOrbitFWr = new PrintWriter(gMotifOrbitFile)
+
+  val gMotifOrbitFileAll = new File(
+    t1 + "MotifOrbit_Independence_AbsCount" + prefix_annotation +
+      ".txt"
+  )
+  val gMotifOrbitAllFWr = new PrintWriter(gMotifOrbitFileAll)
+
   val gMotifAllProbFile_Individual = new File(
     t1 + "MotifProb_AbsCount_Individual" +
       prefix_annotation + ".txt"
@@ -764,6 +771,10 @@ object STM_NodeArrivalRateMultiType {
               itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
             )
             gOffsetAllFWriter.flush()
+
+            gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
+            gMotifOrbitAllFWr.flush()
+
             // gMotifInfo gOffsetInfo has counts for local graph
             if (gMotifInfo_itr_local.isEmpty) {
               //motif info is "rate of that motif devided by probability"
@@ -1833,6 +1844,12 @@ object STM_NodeArrivalRateMultiType {
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
         write_motif_independence(0,0)
+        if (
+            motifName.equalsIgnoreCase("quad")){
+          gMotifOrbitInfo += List(Double.NaN)
+        }else if (motifName.equalsIgnoreCase("twoloop")) {
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+        }
         return sc.emptyRDD
       }
     } catch {
@@ -2324,6 +2341,15 @@ object STM_NodeArrivalRateMultiType {
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
         write_vertex_independence(0,0)
         write_motif_independence(0,0)
+        if (motifName.equalsIgnoreCase("triangle")
+            ) {
+          gMotifOrbitInfo += List(Double.NaN)
+        }else if (motifName.equalsIgnoreCase("triad")) {
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN,Double.NaN)
+        }else if (motifName.equalsIgnoreCase("instar") ||
+                  motifName.equalsIgnoreCase("outstar")) {
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+        }
         return sc.emptyRDD
       }
     }
@@ -2584,6 +2610,17 @@ object STM_NodeArrivalRateMultiType {
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
         write_motif_independence(0,0)
+        if (
+            motifName.equalsIgnoreCase("loop")) {
+          gMotifOrbitInfo += List(Double.NaN)
+        }else if (motifName.equalsIgnoreCase("outdiad") ||
+                  motifName.equalsIgnoreCase("indiad")
+                      ){
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+        }else if (motifName.equalsIgnoreCase("inoutdiad")) {
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN,Double.NaN)
+        }
+
         return sc.emptyRDD
       }
     }
