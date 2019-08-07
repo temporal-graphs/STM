@@ -881,7 +881,8 @@ object STM_NodeArrivalRateMultiType {
 
         //write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
         write_vertex_independence(0,0)
-        write_motif_independence(0,0)
+        //TODO : Should the value be 1 always ?
+        write_motif_independence(1,1)
 
         // TODO : Make sure it is written even for empty simultanious edges
         // write_motif_vertex_association_file(sim_e.keys, "simulatanious")
@@ -899,6 +900,7 @@ object STM_NodeArrivalRateMultiType {
         )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
+        write_motif_independence(1,1)
 
         write_motif_vertex_association_file(sim_e.keys, "simulatanious")
 
@@ -947,6 +949,7 @@ object STM_NodeArrivalRateMultiType {
 
     write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
 
+    write_motif_independence(0,0)
     write_motif_vertex_association_file(sim_e.keys, "simulatanious")
     inputSimpleTAG.distinct()
   }
@@ -2134,7 +2137,9 @@ object STM_NodeArrivalRateMultiType {
 
     if (true_mis_set_rdd_star.isEmpty()) {
       val default_motif_info: Map[Int, Int] =
-        Map((0 -> 0), (1 -> 0), (2 -> 0), (3 -> 0))
+        Map((0 -> 0), (1 -> 0), (2 -> 0), (3 -> 0), (4->0))
+      // one less motif value in 2807670993968171MotifProb_AbsCount_Individualkdd.txt
+      //7.0.18_delta/higgsPartial becuase the default_motif_info is only up to 3->0
       val defaul_timeoffset: ArrayBuffer[Long] = ArrayBuffer(-1L, -1L)
       return (default_motif_info, defaul_timeoffset, tmpG)
 
