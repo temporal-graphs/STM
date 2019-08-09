@@ -117,8 +117,24 @@ object STM_NodeArrivalRateMultiType {
   val gHigherGraphFWriter = new PrintWriter(
     new FileWriter(gHigherGraphFile, true)
   )
+
+
+  val gWindowTimeFile = new File(
+                                   t1 + "WindowTime_" + prefix_annotation + "" + ".txt"
+                                 )
+  val gWindowTimeFWriter = new PrintWriter(
+                                             new FileWriter(gWindowTimeFile, true)
+                                           )
+
+  val gWindowSizeFile = new File(
+                                  t1 + "WindowSize_" + prefix_annotation + "" + ".txt"
+                                )
+  val gWindowSizeFWriter = new PrintWriter(
+                                            new FileWriter(gWindowSizeFile, true)
+                                          )
+
   val gDebug = false
-  val gHigherGOut = false
+  val gHigherGOut = true
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
@@ -705,7 +721,8 @@ object STM_NodeArrivalRateMultiType {
       window_prob += edges_in_current_window.toDouble / total_edges
     }
     println("prob is " + window_prob)
-
+    gWindowSizeFWriter.println(window_prob.mkString(","))
+    gWindowSizeFWriter.flush()
     var gMotifInfo_global = ListBuffer.empty[Double]
     var gOffsetInfo_global = ListBuffer.empty[Long]
 
@@ -714,8 +731,10 @@ object STM_NodeArrivalRateMultiType {
       var gMotifInfo_itr_local = ListBuffer.empty[Double]
       var gOffsetInfo_itr_local = ListBuffer.empty[Long]
       var num_w_in_sampling = 0
+
       for (i <- 0 to num_windows - 1) {
         currWinID = i
+        val t0 = System.nanoTime()
         val rn = scala.util.Random
         if ((rn.nextDouble() < sample_selection_prob) || currWinID == 0) //forcing i==0 so that atleast one is picked
           {
@@ -821,7 +840,11 @@ object STM_NodeArrivalRateMultiType {
             //both are reset because for next local graph motif computation, they should start
             // with empty values
           }
-
+        val t1 = System.nanoTime()
+        val windnowTime = (t1 - t0)
+        // write time taken in this window to the file
+        gWindowTimeFWriter.println(itr + "," + i + "," + windnowTime)
+        gWindowTimeFWriter.flush()
       }
       gMotifInfo_itr_local =
         gMotifInfo_itr_local.map(m => m / num_w_in_sampling)
@@ -917,6 +940,13 @@ object STM_NodeArrivalRateMultiType {
 
         return inputSimpleTAG
 
+    }
+
+    if (gHigherGOut == true) {
+      // Only show the source node where we have simultanious edges
+      sim_e.collect
+        .foreach(e => gHigherGraphFWriter.println(e._1))
+      gHigherGraphFWriter.flush()
     }
 
     val reuse_node_info = sim_e
@@ -2757,6 +2787,9 @@ object STM_NodeArrivalRateMultiType {
     tmpG
   }
 
+  def get_row_id(row:Row) : String = {
+    get_row_src(row)+ "_" + get_row_etype(row) + "_" + get_row_dst(row) + "_" + get_row_time(row)
+  }
   def get_row_src(row: Row): Int = {
     row.getAs[Int](0)
   }
@@ -2862,6 +2895,12 @@ object STM_NodeArrivalRateMultiType {
        * Both the nodes can not be "new" because that is a "isolated edge" by definition and must
        * be identified earlier.
        */
+      if (gHigherGOut == true) {
+        // Write all residual edges
+        selctedMotifEdges.collect
+          .foreach(row => gHigherGraphFWriter.println(get_row_id(row)))
+        gHigherGraphFWriter.flush()
+      }
       val one_new_nodes_motif_cnt = selctedMotifEdges
         .filter(row => {
           val src = get_row_src(row)
