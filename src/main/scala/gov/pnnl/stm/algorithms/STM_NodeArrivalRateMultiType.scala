@@ -990,7 +990,7 @@ object STM_NodeArrivalRateMultiType {
 
     write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
 
-    write_motif_independence(0,0)
+    write_motif_independence(1,1)
     write_motif_vertex_association_file(sim_e.keys, "simulatanious")
     inputSimpleTAG.distinct()
   }
