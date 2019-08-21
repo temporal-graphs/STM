@@ -360,7 +360,6 @@ object STM_NodeArrivalRateMultiType {
 
     write_vertex_independence(iso_v_cnt, iso_v_cnt)
 
-    println("writing motif ind in ISO V")
     write_motif_independence(iso_v_cnt, iso_v_cnt)
 
     gMotifInfo += List(iso_v_cnt.toInt)
@@ -413,7 +412,6 @@ object STM_NodeArrivalRateMultiType {
     val newv = g.vertices.except(v_deg_1)
 
     write_vertex_independence(iso_edge_cnt * 2, iso_edge_cnt * 2)
-    println("write motif id in ISOE")
     write_motif_independence(iso_edge_cnt, iso_edge_cnt)
 
     gMotifAllProb_IndividualFWr.println("iso_e", iso_edge_cnt)
@@ -992,7 +990,6 @@ object STM_NodeArrivalRateMultiType {
     write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
 
     // This is always 1.
-    println("write motif ind in simultanious edges")
     write_motif_independence(1,1)
     write_motif_vertex_association_file(sim_e.keys, "simulatanious")
     inputSimpleTAG.distinct()
@@ -1191,12 +1188,12 @@ object STM_NodeArrivalRateMultiType {
         multi_edge_node_file.flush()
 
         //vertex Ind depends on how many unique vertices exists
-        val multi_edge_nodes_cnt = multi_edge_nodes.count()
+        val multi_edge_nodes_cnt = multi_edge_nodes.length
         val max_possible_multi_edge_nodes = 2 * multi_edges_to_remove.count()
         write_vertex_independence(multi_edge_nodes_cnt,max_possible_multi_edge_nodes)
 
         //motif independence is always 1 here if it exists
-        write_motif_independence(1,1)
+        write_motif_independence(8,8)
 
         println("total multi edges are : ", total_multi_edges)
         println("avg avg_offset_time is ", eMean)
@@ -1301,9 +1298,15 @@ object STM_NodeArrivalRateMultiType {
       writeMotifVertexAssoication(self_loop_nodes, motifName)
 
       val v_distinct = self_loop_nodes.length
-      write_vertex_independence(v_distinct, total_self_loop_cnt)
-      println("writing motif ind in self loop")
-      write_motif_independence(1,1)
+      if(v_distinct == 0)
+        {
+          write_vertex_independence(0, 0)
+          write_motif_independence(0,0)
+        }else
+      {
+        write_vertex_independence(v_distinct, total_self_loop_cnt)
+        write_motif_independence(6,6)
+      }
 
       val newEDF = tmpG.edges.except(selctedMotifEdges)
       import sqlc.implicits._
@@ -1964,7 +1967,6 @@ object STM_NodeArrivalRateMultiType {
     )
     gMotifInfo += reuse_node_info.values.toList
 
-    println("writing motif ind in 4eNV")
     write_motif_independence(num_overlapping_m, num_nonoverlapping_m)
     val v_distinct_cnt = get_v_distinct_cnt_from_true_mis_edges(
       validMotifsArray
@@ -2472,7 +2474,6 @@ object STM_NodeArrivalRateMultiType {
     gMotifAllProb_IndividualFWr.println("3env ", local_res)
     gMotifInfo += local_res
 
-    println("writing motif ind in 3eNV")
     write_motif_independence(num_overlap_motifs, num_nonoverlap_motifs)
     write_vertex_independence(
       v_distinct_cnt,
@@ -2936,7 +2937,6 @@ object STM_NodeArrivalRateMultiType {
         .count()
         .toInt
 
-      println("writing write_motif_independence in residualedge")
       write_motif_independence(num_residual_edges, num_residual_edges)
       write_vertex_independence(num_residual_edges * 2, num_residual_edges * 2)
       // total number of nodes in residual edges are 2*number of edges because IF NOT they are
