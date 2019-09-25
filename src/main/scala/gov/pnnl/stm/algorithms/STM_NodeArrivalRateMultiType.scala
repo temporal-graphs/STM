@@ -193,7 +193,7 @@ object STM_NodeArrivalRateMultiType {
 
     lazy val sparkSession = SparkSession
       .builder()
-      .appName("DARPA-MAA STM")
+      .appName("STM")
       .config(sparkConf)
       .getOrCreate()
 
