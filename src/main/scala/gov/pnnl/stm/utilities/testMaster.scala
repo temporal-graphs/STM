@@ -5,27 +5,24 @@ import org.apache.spark.{SparkConf, SparkContext}
 object testMaster {
 
   def main(args: Array[String]): Unit = {
-    val sparkConf = new SparkConf()
-      .setAppName("Test Master cores")
-      .set("spark.rdd.compress", "true")
-      .set("spark.shuffle.blockTransferService", "nio")
-      .set("spark.serializer",
-           "org.apache.spark.serializer.KryoSerializer")
-    Logger.getLogger("org").setLevel(Level.OFF)
-    Logger.getLogger("akka").setLevel(Level.OFF)
-    val sc = new SparkContext( sparkConf )
+    import org.apache.spark.sql.SparkSession
 
-    val arr = Array.fill[Int](5000000)(1)
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.some.config.option", "some-value").master("local")
+      .getOrCreate()
 
-    val total = arr.reduce((v1,v2) => v1+v2)
-    println("master total add is ", total)
+// For implicit conversions like converting RDDs to DataFrames
+    import spark.implicits._
 
-    val arr2 = Array.fill[Int](5000000)(1)
+    val d=spark.sparkContext.parallelize(Seq((1,3),(2,4),(20,44),(24,41))).toDF
 
-    val total2 = arr2.reduce((v1,v2) => v1*v2)
-    println("master total is ", total2)
+// Displays the content of the DataFrame to stdout
+    d.show()
 
-
+    val res = d.where("(_1 - _2) < -10")
+    res.show()
   }
 
 }
