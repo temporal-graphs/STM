@@ -86,35 +86,6 @@ object getPerYearCitationGraph {
       thisYearRefer.unpersist(true)
 
     })
-//    val paperRefArrBuf : ArrayBuffer[(Array[Char],Array[Char])] = ArrayBuffer.empty
-//    for (line <- Source.fromFile(paperRefSummaryFile).getLines) {
-//      val firstComma = line.indexOf(',')
-//      val paper = line.substring(0,firstComma)
-//      val allRefs = line.substring(firstComma + 1).toCharArray
-//      paperRefArrBuf += ((paper.toCharArray , allRefs))
-//    }
-//
-//    println("Size of paper reference Map is ", paperRefArrBuf.size)
-//    val localpaperRefMap :Map[Array[Char],Array[Char]] = sc.broadcast(paperRefArrBuf).value.toMap
-//
-//
-//    val yearRDD = sc.parallelize(yearArr)
-//
-//    // See if this work as it is a map that return empty iterator
-//    yearRDD.mapPartitionsWithIndex((pid,localdata) => {
-//
-//      localdata.foreach(year=>{
-//        println(" pid is  , ", pid)
-//        val op = new PrintWriter(new File(outFilepath + "/" + year + ".txt"))
-//        for(paperStr <- Source.fromFile(perYearPaperDir + "/" + year + ".txt").getLines()){
-//         val allRefs = localpaperRefMap.getOrElse(paperStr.toCharArray, "").toString.split(",")
-//          for(ref <- allRefs)
-//            { op.println(paperStr + "," + ref) }
-//         op.flush()
-//        }
-//      })
-//      Iterator.empty
-//    })
   }
 
 }
