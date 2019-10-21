@@ -40,11 +40,7 @@ object getPerYearCitationGraph {
      */
     import scala.io.Source
 
-//    val allYearRefer = sc.textFile(paperRefFile).map(line=>{
-//      val linearr = line.split(separator)
-//      (linearr(0),linearr(1))
-//    }).cache()
-//    println("all year referecne size is ", allYearRefer.count())
+
 
     // get yearly paper, lets do it serially.
     val yearArr = 1990 to 2017 toArray
