@@ -40,31 +40,38 @@ object getPerYearCitationGraph {
      */
     import scala.io.Source
 
-    val allYearRefer = sc.textFile(paperRefFile).map(line=>{
-      val linearr = line.split(separator)
-      (linearr(0),linearr(1))
-    }).cache()
-    println("all year referecne size is ", allYearRefer.count())
-
     // get yearly paper, lets do it serially.
     val yearArr = 1990 to 2017 toArray
 
+    /*
+     * https://stackoverflow.com/questions/10157487/using-a-char-array-as-hashtable-key
+     * Can not use char array as the key. so using string instead
+     */
     yearArr.foreach(year => {
-      val yearlyPaper: Array[String] = Source
+      val yearlyPaper: Map[String, Int] = Source
         .fromFile(perYearPaperDir + "/" + year + ".txt")
         .getLines()
-        .map(paper => paper)
-        .toArray
+        .map(paper => (paper.trim , 1)).toMap
 
-      println("year:numPaper", year, yearlyPaper.length)
+      println("year:numPaper", year, yearlyPaper.size)
+      println("Time:", System.nanoTime())
       // broadcast it to all executors
-      val localPaperArr = sc.broadcast(yearlyPaper).value
+      val localPaperMap = sc.broadcast(yearlyPaper).value
 
+      println("year:numPaper Broadcast", year, localPaperMap.size)
+      println("Time:", System.nanoTime())
       // in parallel load only the reference paper from this year
-      val thisYearRefer = allYearRefer
-        .filter(line => localPaperArr.contains(line._1))
-        .map(pap_refPaper => (pap_refPaper._1, pap_refPaper._2)).cache()
+      val thisYearRefer = sc.textFile(paperRefFile).mapPartitionsWithIndex((pid,localdata) =>{
+        println("local parti id ", pid)
+        println("local map size", localPaperMap.size)
+        localdata.filter(line => localPaperMap.contains(line.split(separator)(0).trim))
+          .map(line => {
+            val pap_refPaper = line.split(separator)
+            (pap_refPaper(0),pap_refPaper(1))
+          })
+      }).cache()
       println("This year reference ", thisYearRefer.count())
+      println("Time:", System.nanoTime())
 
 
       //get output file, collect the ciation graph and save
@@ -74,7 +81,7 @@ object getPerYearCitationGraph {
       )
 
       op.flush()
-      thisYearRefer.unpersist()
+      thisYearRefer.unpersist(true)
 
     })
 //    val paperRefArrBuf : ArrayBuffer[(Array[Char],Array[Char])] = ArrayBuffer.empty
