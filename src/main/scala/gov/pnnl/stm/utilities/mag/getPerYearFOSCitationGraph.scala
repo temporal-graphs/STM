@@ -41,6 +41,7 @@ object getPerYearFOSCitationGraph {
             Array((paper.split(",")(0).trim, 1), (paper.split(",")(0).trim, 1))
         )
         .toMap
+      
       // broadcast it to all executors
       val localCitationMap = sc.broadcast(yearlyCitation).value
       val localPaperMap = sc.broadcast(yearlyPaperFromCitation).value
