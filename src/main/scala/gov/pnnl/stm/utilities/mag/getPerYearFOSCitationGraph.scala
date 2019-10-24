@@ -17,7 +17,7 @@ object getPerYearFOSCitationGraph {
 
     val sparkConf = SparkContextInitializer
       .getSparkConf()
-      .setAppName("MAG")
+      .setAppName("MAG").setMaster("local")
     val sc = SparkContextInitializer.getSparkContext(sparkConf)
 
     Logger.getLogger("org").setLevel(Level.OFF)
@@ -30,7 +30,7 @@ object getPerYearFOSCitationGraph {
       val yearlyCitation: Map[String, String] = Source
         .fromFile(perYearCitationDir + "/" + year + ".txt")
         .getLines()
-        .map(paper => (paper.split(",")(0).trim, paper.split(",")(0).trim))
+        .map(paper => (paper.split(",")(0).trim, paper.split(",")(1).trim))
         .toMap
 
       val yearlyPaperFromCitation: Map[String, Int] = Source
@@ -38,7 +38,7 @@ object getPerYearFOSCitationGraph {
         .getLines()
         .flatMap(
           paper =>
-            Array((paper.split(",")(0).trim, 1), (paper.split(",")(0).trim, 1))
+            Array((paper.split(",")(0).trim, 1), (paper.split(",")(1).trim, 1))
         )
         .toMap
       
@@ -49,7 +49,7 @@ object getPerYearFOSCitationGraph {
       val thisYearFOS = sc
         .textFile(paperFOSFile)
         .mapPartitionsWithIndex((pid, localdata) => {
-          println("local map size", localCitationMap.size)
+          //println("local map size", localCitationMap.size)
           localdata
             .filter(
               line => localPaperMap.contains(line.split(separator)(0).trim)
@@ -62,15 +62,16 @@ object getPerYearFOSCitationGraph {
         .cache()
 
       val driverThisYearFOS: Map[String, String] = thisYearFOS.collect().toMap
-      println("Driver count of this year FOS MAP size", driverThisYearFOS.size)
+      println("Driver count of this year FOS MAP size", year,driverThisYearFOS.size)
 
       val op =
         new PrintWriter(new File(perYearFOSCitationDir + "/" + year + ".txt"))
       yearlyCitation.foreach(
         entry =>
-          op.println(
-            driverThisYearFOS.getOrElse(entry._1, "") + ",0," +
-              driverThisYearFOS.getOrElse(entry._2, "") + "," + year
+          if(driverThisYearFOS.contains(entry._1) && driverThisYearFOS.contains(entry._2))
+            op.println(
+            driverThisYearFOS.getOrElse(entry._1, "PID_" + entry._1) + ",0," +
+              driverThisYearFOS.getOrElse(entry._2, "PID_") + "," + year
         )
       )
       op.flush()
