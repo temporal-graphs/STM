@@ -30,6 +30,7 @@ import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
+import gov.pnnl.datamodel.TAG
 
 /**
   * @author puro755
@@ -189,7 +190,9 @@ object STM_NodeArrivalRateMultiType {
      */
     lazy val sparkConf = new SparkConf()
       .registerKryoClasses(Array.empty)
-      .set("spark.driver.cores", "14")
+      .set("spark.default.parallelism","4")
+      //.set("spark.driver.cores", "14")
+    .set("spark.sql.shuffle.partitions","8")
 
     lazy val sparkSession = SparkSession
       .builder()
@@ -200,8 +203,12 @@ object STM_NodeArrivalRateMultiType {
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
+    sparkSession.set("spark.sql.shuffle.partitions","4")
+    sparkSession.set("spark.default.parallelism","4")
+
     val sc = sparkSession.sparkContext
     val sqlc = sparkSession.sqlContext
+
 
     /*
      * Program specific configuration
@@ -231,8 +238,41 @@ object STM_NodeArrivalRateMultiType {
      * Get the base tag rdd which has 4 things: src etype dst time
      *
      */
-    val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
+    //val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
+    var nodemap = scala.collection.mutable.Map[Int,String]()
 
+
+    val nodemapFile = new PrintWriter((new File("nodeMap.txt")))
+    val inputtag = sc.textFile(nodeFile).map { line =>
+      try {
+        val fields = line.split(sep)
+        var (srcStr,src) = (fields(0),fields(0).hashCode)
+        nodemap += (src ->  srcStr)
+        val etype = fields(1).toInt
+        val (dstStr,dst) = (fields(2),fields(2).hashCode)
+        nodemap += (dst -> dstStr)
+        val time = fields(3).toLong
+        val defaultWt = 0.0
+        (src, etype, dst, time, defaultWt, Array.empty[Int], Array.empty[Int])
+      } catch {
+        case ex: java.lang.ArrayIndexOutOfBoundsException => {
+          println("AIOB:", line)
+          (-1, -1, -1, -1L, 0.0, Array.empty[Int], Array.empty[Int])
+        }
+        case ex: java.lang.NumberFormatException =>
+          println("AIOB2:", line)
+          (-1, -1, -1, -1L, 0.0, Array.empty[Int], Array.empty[Int])
+      }
+    }.distinct.cache()
+    println(":input tag size ", inputtag.count())
+    println("node map size " , nodemap.size)
+    //nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
+    nodemapFile.flush()
+
+    import gov.pnnl.datamodel.TAG
+
+    import gov.pnnl.datamodel.TAG
+    val inputTAG = new TAG(inputtag)
     /*
      * Main method to get motif probability .It returns 3 results:
      *    * normMotifProb: normalized motif probability
@@ -377,6 +417,8 @@ object STM_NodeArrivalRateMultiType {
                       gETypes: Array[eType]): GraphFrame = {
 
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -397,7 +439,7 @@ object STM_NodeArrivalRateMultiType {
       .filter(
         col("a.id").isin(v_deg_1_exc_local: _*)
           && col("b.id").isin(v_deg_1_exc_local: _*)
-      )
+      ) 
 
     val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
     val selctedMotifEdges =
@@ -408,8 +450,8 @@ object STM_NodeArrivalRateMultiType {
       selctedMotifEdges.rdd.map(row => get_edge_from_row(row))
     write_motif_vertex_association_file(tmi_edges_rdd, motifName)
 
-    val newe = g.edges.except(selctedMotifEdges)
-    val newv = g.vertices.except(v_deg_1)
+    val newe = g.edges.except(selctedMotifEdges) 
+    val newv = g.vertices.except(v_deg_1) 
 
     write_vertex_independence(iso_edge_cnt * 2, iso_edge_cnt * 2)
     write_motif_independence(iso_edge_cnt, iso_edge_cnt)
@@ -424,6 +466,8 @@ object STM_NodeArrivalRateMultiType {
                motifName: String,
                gETypes: Array[eType], tDelta: Long): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
     var tmpG = g
@@ -473,14 +517,14 @@ object STM_NodeArrivalRateMultiType {
 
               val uniqeEDF = sqlc
                 .createDataFrame(validMotifsArray)
-                .toDF("src", "type", "dst", "time")
+                .toDF("src", "type", "dst", "time") 
 
               /*
                * 			dataFrame's except methods returns distinct edges by default.
                *      I dont see the documentation saying this. I have fixed the graph reader code and do a "distinct" while
                *      creating the base RDD
                */
-              val newEDF = tmpG.edges.except(uniqeEDF)
+              val newEDF = tmpG.edges.except(uniqeEDF) 
               import sqlc.implicits._
               val newVRDD = newEDF
                 .flatMap(
@@ -491,7 +535,7 @@ object STM_NodeArrivalRateMultiType {
                   )
                 )
                 .distinct
-                .toDF("id", "name")
+                .toDF("id", "name") 
               val newGraph = GraphFrame(newVRDD, newEDF)
               tmpG.unpersist(true)
               tmpG = newGraph.cache()
@@ -509,6 +553,8 @@ object STM_NodeArrivalRateMultiType {
                   initial_tag: SimpleTAGRDD,
     dDelta: Long): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
+
+
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -518,7 +564,7 @@ object STM_NodeArrivalRateMultiType {
       .flatMap(nd => Iterator((nd._1, nd._1), (nd._3, nd._3)))
       .cache()
     import sqlc.implicits._
-    val vDF = vInitialRDD.distinct.toDF("id", "name").cache()
+    val vDF = vInitialRDD.distinct.toDF("id", "name") .cache()
     import sqlc.implicits._
 
     vInitialRDD.unpersist(true)
@@ -538,7 +584,7 @@ object STM_NodeArrivalRateMultiType {
           ((gETypes.contains(edge._2))
             || (edge._2 == -1)) //"isolated v"
       )
-      .toDF("src", "type", "dst", "time")
+      .toDF("src", "type", "dst", "time") 
       .cache()
 
     // Create a GraphFrame
@@ -694,7 +740,7 @@ object STM_NodeArrivalRateMultiType {
     val maxTime = allTimes.max
     val duration = maxTime - minTime
 
-    if (gDebug) {
+    if (!gDebug) {
       println("min time", minTime)
       println("max time", maxTime)
       println("duration in milliseconds", duration)
@@ -713,7 +759,7 @@ object STM_NodeArrivalRateMultiType {
       val edges_in_current_window: Long = initial_simple_tag
         .filter(
           e =>
-            (e._4 > win_start_time) //start and end time does not include -1
+            (e._4 >= win_start_time) //start and end time does not include -1
               && (e._4 < win_end_time)
         )
         .count()
@@ -763,7 +809,7 @@ object STM_NodeArrivalRateMultiType {
              */
             val local_tag = initial_simple_tag.filter(
               e =>
-                (e._4 > (minTime + i * time_in_window)) &&
+                (e._4 >= (minTime + i * time_in_window)) &&
                   (e._4 < (minTime + (i + 1) *
                     time_in_window))
             )
@@ -1020,6 +1066,8 @@ object STM_NodeArrivalRateMultiType {
                          motifName: String,
                          gETypes: Array[Int]): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -1040,7 +1088,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("a != b")
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
-          .filter("e1.time < e2.time")
+          .filter("e1.time < e2.time") 
         val selectEdgeArr = Array(
           "e1.src",
           "e1.type",
@@ -1221,7 +1269,7 @@ object STM_NodeArrivalRateMultiType {
          * first edge is always smaller time than 2nd one so no need to check
          */
 
-        val newEDF = tmpG.edges.except(multi_edges_df)
+        val newEDF = tmpG.edges.except(multi_edges_df) 
         import sqlc.implicits._
         val newVRDD = newEDF
           .flatMap(
@@ -1232,7 +1280,7 @@ object STM_NodeArrivalRateMultiType {
             )
           )
           .distinct
-          .toDF("id", "name")
+          .toDF("id", "name") 
         val newGraph = GraphFrame(newVRDD, newEDF)
         // unpersist old graph
         tmpG.unpersist(true)
@@ -1247,6 +1295,8 @@ object STM_NodeArrivalRateMultiType {
                    gETypes: Array[Int]): GraphFrame = {
 
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sqlc = spark.sqlContext
 
     var tmpG: GraphFrame = g.cache()
@@ -1259,7 +1309,7 @@ object STM_NodeArrivalRateMultiType {
         tmpG
           .find(gAtomicMotifs(motifName))
           .filter("a == b")
-          .filter("e1.type = " + gETypes(et1))
+          .filter("e1.type = " + gETypes(et1)) 
       val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
       val selctedMotifEdges: DataFrame = overlappingMotifs
         .select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -1319,7 +1369,7 @@ object STM_NodeArrivalRateMultiType {
           )
         )
         .distinct
-        .toDF("id", "name")
+        .toDF("id", "name") 
       val newGraph = GraphFrame(newVRDD, newEDF)
       gMotifAllProb_IndividualFWr.println(
         "self loop",
@@ -1427,11 +1477,13 @@ object STM_NodeArrivalRateMultiType {
       validMotifsArray: RDD[(Int, Int, Int, Long)]
   ): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sqlc = spark.sqlContext
 
     val uniqeEDF = sqlc
       .createDataFrame(validMotifsArray)
-      .toDF("src", "type", "dst", "time")
+      .toDF("src", "type", "dst", "time") 
 
     /*
      * 			dataFrame's except methods returns distinct edges by default.
@@ -1449,7 +1501,7 @@ object STM_NodeArrivalRateMultiType {
         )
       )
       .distinct
-      .toDF("id", "name")
+      .toDF("id", "name") 
     val newGraph = GraphFrame(newVRDD, newEDF)
     tmpG.unpersist(true)
     newGraph.cache()
@@ -1760,6 +1812,8 @@ object STM_NodeArrivalRateMultiType {
   ): RDD[(vertexId, vertexId, vertexId, eTime)] = {
 
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -1796,7 +1850,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
-          .filter("e4.type = " + gETypes(et4))
+          .filter("e4.type = " + gETypes(et4)) 
 //          .filter("(e1.time - e2.time) < 600")
 //          .filter("(e1.time - e2.time) > -600" )
 //          .filter("(e2.time - e3.time) < 600")
@@ -1820,12 +1874,11 @@ object STM_NodeArrivalRateMultiType {
               (col("a") =!= col("c")) &&
               (col("b") =!= col("d"))
           )
-          .cache()
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
           .filter("e4.type = " + gETypes(et4))
-          .filter("e1.time < e2.time")
+          .filter("e1.time < e2.time") 
 //          .filter("(e1.time - e2.time) < 600")
 //          .filter("(e1.time - e2.time) > -600" )
 //          .filter("(e2.time - e3.time) < 600")
@@ -2145,8 +2198,8 @@ object STM_NodeArrivalRateMultiType {
     println("top k are ", k, topK_V.toList)
     val in_out_star_edges =
       if (motifName.equalsIgnoreCase("outstar"))
-        tmpG.find("(a)-[e1]->(b)").filter(col("a.id").isin(topK_V: _*))
-      else tmpG.find("(a)-[e1]->(b)").filter(col("b.id").isin(topK_V: _*))
+        tmpG.find("(a)-[e1]->(b)").filter(col("a.id").isin(topK_V: _*)) 
+      else tmpG.find("(a)-[e1]->(b)").filter(col("b.id").isin(topK_V: _*)) 
     val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
     val selctedMotifEdges =
       in_out_star_edges.select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -2190,7 +2243,7 @@ object STM_NodeArrivalRateMultiType {
           println(partId, local_star_map)
           local_high_star_motifs.toIterator
         })
-        .repartition(400)
+         
         .cache()
 
     // creating same datastruture to make it consistent with rest of the code
@@ -2252,6 +2305,8 @@ object STM_NodeArrivalRateMultiType {
                          num_motif_edges: Int,
     tDelta : Long): RDD[(Int, Int, Int, Long)] = {
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -2292,7 +2347,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
-          .filter("a.id < c.id")
+          .filter("a.id < c.id") 
 //          .filter("(e1.time - e2.time) < 600")
 //          .filter("(e1.time - e2.time) > -600" )
 //          .filter("(e2.time - e3.time) < 600")
@@ -2317,7 +2372,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
           .filter("e3.type = " + gETypes(et3))
-          .filter("e1.time < e2.time")
+          .filter("e1.time < e2.time") 
 //          .filter("(e1.time - e2.time) < 600")
 //          .filter("(e1.time - e2.time) > -600" )
 //          .filter("(e2.time - e3.time) < 600")
@@ -2337,7 +2392,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("c != a")
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3))
+          .filter("e3.type = " + gETypes(et3)) 
 //          .filter("(e1.time - e2.time) < 600")
 //          .filter("(e1.time - e2.time) > -600" )
 //          .filter("(e2.time - e3.time) < 600")
@@ -2571,10 +2626,10 @@ object STM_NodeArrivalRateMultiType {
     tDelta : Long): RDD[(Int, Int, Int, Long)] = {
     println(" Staring 2e3v motif nV, vE", num_motif_nodes, num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
+    
+    
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
-
-
 
     val overlappingMotifs =
       if (num_motif_nodes == 2) {
@@ -2584,7 +2639,7 @@ object STM_NodeArrivalRateMultiType {
             .filter("a != b")
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
-            .filter("e1.time < e2.time")
+            .filter("e1.time < e2.time") 
 //            .filter("(e1.time - e2.time) < 600" )
 //            .filter("(e1.time - e2.time) > -600" )
 
@@ -2594,7 +2649,7 @@ object STM_NodeArrivalRateMultiType {
             .find(gAtomicMotifs(motifName))
             .filter("a != b")
             .filter("e1.type = " + gETypes(et1))
-            .filter("e2.type = " + gETypes(et2))
+            .filter("e2.type = " + gETypes(et2)) 
 //            .filter("(e1.time - e2.time) < 600" )
 //            .filter("(e1.time - e2.time) > -600" )
             .cache()
@@ -2608,7 +2663,7 @@ object STM_NodeArrivalRateMultiType {
             .filter("c != a")
             .filter("e1.type = " + gETypes(et1))
             .filter("e2.type = " + gETypes(et2))
-            .filter("e1.time < e2.time")
+            .filter("e1.time < e2.time") 
 //            .filter("(e1.time - e2.time) < 600" )
 //            .filter("(e1.time - e2.time) > -600" )
             .cache()
@@ -2619,7 +2674,7 @@ object STM_NodeArrivalRateMultiType {
             .filter("b != c")
             .filter("c != a")
             .filter("e1.type = " + gETypes(et1))
-            .filter("e2.type = " + gETypes(et2))
+            .filter("e2.type = " + gETypes(et2)) 
 //            .filter("(e1.time - e2.time) < 600" )
 //            .filter("(e1.time - e2.time) > -600" )
             .cache()
@@ -2760,6 +2815,8 @@ object STM_NodeArrivalRateMultiType {
     for (et1 <- gETypes.indices) {
       for (et2 <- gETypes.indices) {
         val spark = SparkSession.builder().getOrCreate()
+        
+        
         val sc = spark.sparkContext
         val sqlc = spark.sqlContext
 
@@ -2782,14 +2839,14 @@ object STM_NodeArrivalRateMultiType {
 
         val uniqeEDF = sqlc
           .createDataFrame(validMotifsArray)
-          .toDF("src", "type", "dst", "time")
+          .toDF("src", "type", "dst", "time") 
 
         /*
          * 			dataFrame's except methods returns distinct edges by default.
          * 			See more detail in processUniqueMotif_3Edges method
          *
          */
-        val newEDF = tmpG.edges.except(uniqeEDF)
+        val newEDF = tmpG.edges.except(uniqeEDF) 
         import sqlc.implicits._
         val newVRDD = newEDF
           .flatMap(
@@ -2800,7 +2857,7 @@ object STM_NodeArrivalRateMultiType {
             )
           )
           .distinct
-          .toDF("id", "name")
+          .toDF("id", "name") 
         import sqlc.implicits._
         val newGraph = GraphFrame(newVRDD, newEDF)
         tmpG = newGraph
@@ -2852,7 +2909,7 @@ object STM_NodeArrivalRateMultiType {
         tmpG
           .find(gAtomicMotifs(motifName))
           .filter("a != b")
-          .filter("e1.type = " + gETypes(et1))
+          .filter("e1.type = " + gETypes(et1)) 
       val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
       val selctedMotifEdges = overlappingMotifs
         .select(selectEdgeArr.head, selectEdgeArr.tail: _*)
