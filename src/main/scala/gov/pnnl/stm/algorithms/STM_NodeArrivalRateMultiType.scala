@@ -243,34 +243,31 @@ object STM_NodeArrivalRateMultiType {
 
 
     val nodemapFile = new PrintWriter((new File("nodeMap.txt")))
-    val inputtag = sc.textFile(nodeFile).map { line =>
-      try {
-        val fields = line.split(sep)
-        var (srcStr,src) = (fields(0),fields(0).hashCode)
-        nodemap += (src ->  srcStr)
-        val etype = fields(1).toInt
-        val (dstStr,dst) = (fields(2),fields(2).hashCode)
-        nodemap += (dst -> dstStr)
-        val time = fields(3).toLong
-        val defaultWt = 0.0
-        (src, etype, dst, time, defaultWt, Array.empty[Int], Array.empty[Int])
-      } catch {
-        case ex: java.lang.ArrayIndexOutOfBoundsException => {
-          println("AIOB:", line)
-          (-1, -1, -1, -1L, 0.0, Array.empty[Int], Array.empty[Int])
-        }
-        case ex: java.lang.NumberFormatException =>
-          println("AIOB2:", line)
-          (-1, -1, -1, -1L, 0.0, Array.empty[Int], Array.empty[Int])
-      }
-    }.distinct.cache()
-    println(":input tag size ", inputtag.count())
-    println("node map size " , nodemap.size)
-    //nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
+    //println(":input tag size ", inputtag.count())
+    //println("node map size " , nodemap.size)
+    nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
     nodemapFile.flush()
 
-    import gov.pnnl.datamodel.TAG
+    val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
+    val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
+    val filterarr_nodeIds : Array[Int] = inputtag_varchar.filter(entry => {
+      // array should be used as a key / similarity code as they use referential equality.
+      val keyset :Set[String] = entry._6.map(k=>k.toString).toSet
+      val valset :Set[String] = entry._7.map(k=>k.toString).toSet
+      //convert char seq to string
+      val filterset :Set[String] = filterarr.toSet
+      for(filter <-  filterset)
+      {
+        if (keyset.contains(filter) || valset.contains(filter))
+          {return true}
+      }
+      return false
+    }).flatMap(fEntry => Array(fEntry._1, fEntry._3)).distinct().collect()
 
+
+
+    val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
+                                                      Array.empty[Int]) ).cache()
     import gov.pnnl.datamodel.TAG
     val inputTAG = new TAG(inputtag)
     /*
