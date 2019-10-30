@@ -244,31 +244,14 @@ object STM_NodeArrivalRateMultiType {
 
 
     val nodemapFile = new PrintWriter((new File("nodeMap.txt")))
-    //println(":input tag size ", inputtag.count())
-    //println("node map size " , nodemap.size)
     nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
     nodemapFile.flush()
 
     val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     println("filterset arr input ", filterarr.toList)
-//    val filter_nodeIds : Array[Int] = inputtag_varchar.filter(entry => {
-//      // array should be used as a key / similarity code as they use referential equality.
-//      val keyset :Set[String] = entry._6.map(k=>k.mkString("")).toSet
-//      val valset :Set[String] = entry._7.map(k=>k.mkString("")).toSet
-//      //convert char seq to string
-//      println(keyset , valset)
-//      val filterset :Set[String] = filterarr.toSet
-//      var isFilterID = false
-//      for(filter <-  filterset)
-//      {
-//        if (keyset.contains(filter) || valset.contains(filter))
-//          isFilterID = isFilterID | true
-//      }
-//      isFilterID
-//    }).flatMap(fEntry => Array(fEntry._1, fEntry._3)).distinct().collect()
 
-    val filter_nodeIds = inputtag_varchar.flatMap(entry=>{
+    val filterNodeIDs = inputtag_varchar.flatMap(entry=>{
 
       var filterNode = scala.collection.mutable.Set.empty[Int]
       val valset :List[String] = entry._7.map(k=>k.mkString("")).toList
@@ -283,7 +266,7 @@ object STM_NodeArrivalRateMultiType {
         }
       filterNode
     }).distinct().collect()
-    println("filter node ids are ", filter_nodeIds.toList)
+    println("filter node ids are ", filterNodeIDs.toList)
     System.exit(-1)
 
     val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
@@ -296,7 +279,7 @@ object STM_NodeArrivalRateMultiType {
      *    * offsetProb: time offset of the motifs
      *    * avg_out_deg: out degree distribution of the input graph
      */
-    var local_res = processTAG(inputTAG, gDebug, clo,filter_nodeIds)
+    var local_res = processTAG(inputTAG, gDebug, clo,filterNodeIDs)
 
     println("local res 1" + local_res._1)
 
@@ -318,7 +301,7 @@ object STM_NodeArrivalRateMultiType {
       baseTAG: gov.pnnl.datamodel.TAG,
       gDebug: Boolean,
       clo: Map[String, String],
-      filter_nodeIds: Array[vertexId]
+      filterNodeIDs: Array[vertexId]
   ): (ListBuffer[Double], ListBuffer[Long], Array[Double]) = {
 
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
@@ -378,11 +361,11 @@ object STM_NodeArrivalRateMultiType {
         gETypes,
         inputSimpleTAG,
         tDelta,
-        filter_nodeIds
+        filterNodeIDs
       )
       (res._1, res._2, avg_out_deg)
     } else {
-      val res = complete_STM(gDebug, gETypes, inputSimpleTAG,filter_nodeIds)
+      val res = complete_STM(gDebug, gETypes, inputSimpleTAG,filterNodeIDs)
       (res._1, res._2, avg_out_deg)
     }
 
@@ -483,7 +466,7 @@ object STM_NodeArrivalRateMultiType {
 
   def findQuad(g: GraphFrame,
                motifName: String,
-               gETypes: Array[eType], tDelta: Long): GraphFrame = {
+               gETypes: Array[eType], tDelta: Long,filterNodeIDs:Array[vertexId]): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
     
     
@@ -512,7 +495,8 @@ object STM_NodeArrivalRateMultiType {
                     gETypes,
                     3,
                     4,
-                    tDelta
+                    tDelta,
+                    filterNodeIDs
                   )
                 else
                   find4EdgNVtxMotifs(
@@ -525,7 +509,8 @@ object STM_NodeArrivalRateMultiType {
                     gETypes,
                     4,
                     4,
-                    tDelta
+                    tDelta,
+                    filterNodeIDs
                   )
 
               //TODO: look at the need of this check and the return type
@@ -570,14 +555,12 @@ object STM_NodeArrivalRateMultiType {
   def findAllITeM(gETypes: Array[eType],
                   call_id_val: Int,
                   initial_tag: SimpleTAGRDD,
-    dDelta: Long,filter_nodeIds:Array[vertexId]): GraphFrame = {
+    dDelta: Long,filterNodeIDs:Array[vertexId]): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
 
 
-    val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
-    var call_id = call_id_val
 
     val vInitialRDD = initial_tag
       .flatMap(nd => Iterator((nd._1, nd._1), (nd._3, nd._3)))
@@ -621,13 +604,13 @@ object STM_NodeArrivalRateMultiType {
     g = findIsolatedEdg(g, "isolatededge", gETypes)
     g = findNonSimMultiEdg(g, "multiedge", gETypes)
     g = findSelfLoop(g, "selfloop", gETypes)
-    g = findTriad(g, "triangle", SYMMETRY, gETypes,dDelta).cache()
-    g = findTriad(g, "triad", ASYMMETRY, gETypes,dDelta).cache()
-    g = findQuad(g, "twoloop", gETypes,dDelta).cache()
-    g = findQuad(g, "quad", gETypes,dDelta)
+    g = findTriad(g, "triangle", SYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
+    g = findTriad(g, "triad", ASYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
+    g = findQuad(g, "twoloop", gETypes,dDelta,filterNodeIDs).cache()
+    g = findQuad(g, "quad", gETypes,dDelta,filterNodeIDs)
     g = findDyad(g, "loop", SYMMETRY, gETypes, 2, 2,dDelta).cache()
-    g = findTriad(g, "outstar", SYMMETRY, gETypes,dDelta).cache()
-    g = findTriad(g, "instar", SYMMETRY, gETypes,dDelta).cache()
+    g = findTriad(g, "outstar", SYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
+    g = findTriad(g, "instar", SYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
     g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2,dDelta).cache()
     g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2,dDelta).cache()
     g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2,dDelta).cache()
@@ -644,7 +627,7 @@ object STM_NodeArrivalRateMultiType {
   def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
-      initial_simple_tag: SimpleTAGRDD,filter_nodeIds:Array[vertexId]
+      initial_simple_tag: SimpleTAGRDD,filterNodeIDs:Array[vertexId]
   ): (ListBuffer[Double], ListBuffer[Long]) = {
     var call_id = -1
 
@@ -667,7 +650,7 @@ object STM_NodeArrivalRateMultiType {
     }
 
     try {
-      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filter_nodeIds)
+      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs)
       if (gDebug) {
         println(gMotifInfo.toList)
         println("number of edges in last graph", g.edges.count)
@@ -743,7 +726,7 @@ object STM_NodeArrivalRateMultiType {
       gETypes: Array[Int],
       initial_simple_tag: SimpleTAGRDD,
       tDelta:Long,
-      filter_nodeIds: Array[vertexId]
+      filterNodeIDs: Array[vertexId]
 
 
 
@@ -835,7 +818,7 @@ object STM_NodeArrivalRateMultiType {
             )
             var call_id = 0
             try {
-              findAllITeM(gETypes, call_id, local_tag,tDelta)
+              findAllITeM(gETypes, call_id, local_tag,tDelta,filterNodeIDs)
             } catch {
               case e: Exception => {
                 println("\nERROR: Call id = " + call_id)
@@ -1435,7 +1418,7 @@ object STM_NodeArrivalRateMultiType {
   def findTriad(g: GraphFrame,
                 motifName: String,
                 symmetry: Boolean = false,
-                gETypes: Array[Int],tDelta: Long): GraphFrame = {
+                gETypes: Array[Int],tDelta: Long, filterNodeIDs:Array[vertexId]): GraphFrame = {
 
 //    println("check if graph g e is chached " + g.edges.storageLevel.useMemory)
 
@@ -1461,7 +1444,8 @@ object STM_NodeArrivalRateMultiType {
                   gETypes,
                   4,
                   3,
-                  tDelta
+                  tDelta,
+                  filterNodeIDs
                 )
               else
                 find3EdgNVtxMotifs(
@@ -1474,7 +1458,8 @@ object STM_NodeArrivalRateMultiType {
                   gETypes,
                   3,
                   3,
-                  tDelta
+                  tDelta,
+                  filterNodeIDs
                 )
             if (validMotifsArray.isEmpty)
               break
@@ -1818,6 +1803,23 @@ object STM_NodeArrivalRateMultiType {
     })
   }
 
+  def base4EFind(graph: GraphFrame,motifName:String,gETypes:Array[Int],
+    et1: eType,
+    et2: eType,
+    et3: eType,
+    et4: eType) : Dataset[Row] ={
+   return graph.find(gAtomicMotifs(motifName))
+     .filter(
+              (col("a") =!= col("b")) &&
+              (col("b") =!= col("c")) &&
+              (col("a") =!= col("c"))
+            )
+     .filter("e1.type = " + gETypes(et1))
+     .filter("e2.type = " + gETypes(et2))
+     .filter("e3.type = " + gETypes(et3))
+     .filter("e4.type = " + gETypes(et4))
+  }
+
   def find4EdgNVtxMotifs(
       tmpG: GraphFrame,
       motifName: String,
@@ -1828,7 +1830,8 @@ object STM_NodeArrivalRateMultiType {
       gETypes: Array[eType],
       num_motif_nodes: Int,
       num_motif_edges: Int,
-      tDelta : Long
+      tDelta : Long,
+    filterNodeIDs:Array[vertexId]
   ): RDD[(vertexId, vertexId, vertexId, eTime)] = {
 
     val spark = SparkSession.builder().getOrCreate()
@@ -1860,56 +1863,18 @@ object STM_NodeArrivalRateMultiType {
 
     val overlappingMotifs: Dataset[Row] =
       if (num_motif_nodes == 3)
-        tmpG
-          .find(gAtomicMotifs(motifName))
-          .filter(
-            (col("a") =!= col("b")) &&
-              (col("b") =!= col("c")) &&
-              (col("a") =!= col("c"))
-          )
-          .filter("e1.type = " + gETypes(et1))
-          .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3))
-          .filter("e4.type = " + gETypes(et4)) 
-//          .filter("(e1.time - e2.time) < 600")
-//          .filter("(e1.time - e2.time) > -600" )
-//          .filter("(e2.time - e3.time) < 600")
-//          .filter("(e2.time - e3.time) > -600" )
-//          .filter("(e3.time - e4.time) < 600")
-//          .filter("(e3.time - e4.time) > -600" )
-//          .filter("(e4.time - e1.time) < 600")
-//          .filter("(e4.time - e1.time) > -600" )
+        filterNodeID_4E(base4EFind(tmpG,motifName,gETypes,et1,et2,et3,et4), filterNodeIDs,
+                        num_motif_nodes)
         .cache()
-      //.filter("e1.time < e2.time")
-      //.filter("e2.time < e3.time")
-      //.filter("e3.time < e4.time").cache()
+
       else
-        tmpG
-          .find(gAtomicMotifs(motifName))
-          .filter(
-            (col("a") =!= col("b")) &&
-              (col("b") =!= col("c")) &&
+              filterNodeID_4E(base4EFind(tmpG,motifName,gETypes,et1,et2,et3,et4).filter(
               (col("c") =!= col("d")) &&
               (col("d") =!= col("a")) &&
-              (col("a") =!= col("c")) &&
               (col("b") =!= col("d"))
           )
-          .filter("e1.type = " + gETypes(et1))
-          .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3))
-          .filter("e4.type = " + gETypes(et4))
-          .filter("e1.time < e2.time") 
-//          .filter("(e1.time - e2.time) < 600")
-//          .filter("(e1.time - e2.time) > -600" )
-//          .filter("(e2.time - e3.time) < 600")
-//          .filter("(e2.time - e3.time) > -600" )
-//          .filter("(e3.time - e4.time) < 600")
-//          .filter("(e3.time - e4.time) > -600" )
-//          .filter("(e4.time - e1.time) < 600")
-//          .filter("(e4.time - e1.time) > -600" )
+          .filter("e1.time < e2.time"),filterNodeIDs,num_motif_nodes)
           .cache()
-    //.filter("e2.time < e3.time")
-    //.filter("e3.time < e4.time").cache()
 
     val selectEdgeArr = Array(
       "e1.src",
@@ -2306,7 +2271,56 @@ object STM_NodeArrivalRateMultiType {
     (reuse_node_info_star, avg_reuse_temporal_offset_info, filteredTmpG)
   }
 
-  /**
+  def base3EFind(newGraph: GraphFrame, motifName :String, gETypes:Array[Int],
+    et1: eType,
+    et2: eType,
+    et3: eType):Dataset[Row] = {
+    return newGraph.find(gAtomicMotifs(motifName))
+      .filter("a != b")
+      .filter("b != c")
+      .filter("e1.type = " + gETypes(et1))
+      .filter("e2.type = " + gETypes(et2))
+      .filter("e3.type = " + gETypes(et3))
+  }
+
+
+
+  def filterNodeID_3E(valueSoFar: Dataset[Row],
+                      filterNodeIDs: Array[vertexId],
+                      num_motif_nodes: Int): Dataset[Row] = {
+    if (filterNodeIDs.length == 0)
+      return valueSoFar
+    else
+      return valueSoFar.filter(
+          col("a.id").isin(filterNodeIDs: _*)
+            || col("b.id").isin(filterNodeIDs: _*)
+            || col("c.id").isin(filterNodeIDs: _*)
+        )
+
+  }
+  def filterNodeID_4E(valueSoFar: Dataset[Row],
+    filterNodeIDs: Array[vertexId],
+    num_motif_nodes: Int): Dataset[Row] = {
+    if (filterNodeIDs.length == 0)
+      return valueSoFar
+    else
+      return if (num_motif_nodes == 4)
+               valueSoFar.filter(
+                                  col("a.id").isin(filterNodeIDs: _*)
+                                  || col("b.id").isin(filterNodeIDs: _*)
+                                  || col("c.id").isin(filterNodeIDs: _*)
+                                  || col("d.id").isin(filterNodeIDs: _*)
+                                )
+             else
+               valueSoFar.filter(
+                                  col("a.id").isin(filterNodeIDs: _*)
+                                  || col("b.id").isin(filterNodeIDs: _*)
+                                  || col("c.id").isin(filterNodeIDs: _*)
+                                )
+
+  }
+
+    /**
     * get_3eNv_motifs_mTypes function returns 3 vertex, 3 edges motif with multiple edge types
     *
     * @param g
@@ -2323,10 +2337,10 @@ object STM_NodeArrivalRateMultiType {
                          gETypes: Array[Int],
                          num_motif_nodes: Int,
                          num_motif_edges: Int,
-    tDelta : Long): RDD[(Int, Int, Int, Long)] = {
+    tDelta : Long,filterNodeIDs: Array[vertexId]): RDD[(Int, Int, Int, Long)] = {
     val spark = SparkSession.builder().getOrCreate()
-    
-    
+
+
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -2346,29 +2360,7 @@ object STM_NodeArrivalRateMultiType {
           .filter(filtere1e2_min)
           does not work. SO adding every condition manually for GT benchmarking
           TODO:
-     */
-
-    val overlappingMotifs =
-      if (num_motif_nodes == 4) {
-
-        println("original graph e ", tmpG.edges.count())
-        val res =
-          topKStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName)
-        reuse_node_info_star = res._1
-        avg_reuse_temporal_offset_info_star = res._2
-        val newGraph = res._3.cache()
-        println("Sneaky graph e ", newGraph.edges.count())
-        newGraph
-          .find(gAtomicMotifs(motifName))
-          .filter("a != b")
-          .filter("b != c")
-          .filter("c != d")
-          .filter("a != d")
-          .filter("e1.type = " + gETypes(et1))
-          .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3))
-          .filter("a.id < c.id") 
-//          .filter("(e1.time - e2.time) < 600")
+          //          .filter("(e1.time - e2.time) < 600")
 //          .filter("(e1.time - e2.time) > -600" )
 //          .filter("(e2.time - e3.time) < 600")
 //          .filter("(e2.time - e3.time) > -600" )
@@ -2381,48 +2373,40 @@ object STM_NodeArrivalRateMultiType {
           // time based restriction wont work for this motif type
           //.filter("e1.time < e2.time")
           //.filter("e2.time < e3.time")
-          .cache()
+     */
+
+    val overlappingMotifs =
+      if (num_motif_nodes == 4) {
+
+        println("original graph e ", tmpG.edges.count())
+        val res =
+          topKStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName)
+        reuse_node_info_star = res._1
+        avg_reuse_temporal_offset_info_star = res._2
+        val newGraph = res._3.cache()
+        println("Sneaky graph e ", newGraph.edges.count())
+        filterNodeID_3E(
+          base3EFind(newGraph, motifName, gETypes, et1, et2, et3)
+            .filter("c != d")
+            .filter("a != d")
+            .filter("a.id < c.id"),
+          filterNodeIDs,num_motif_nodes
+        ).cache()
 
       } else if (symmetry)
-        tmpG
-          .find(gAtomicMotifs(motifName))
-          .filter("a != b")
-          .filter("b != c")
-          .filter("c != a")
-          .filter("e1.type = " + gETypes(et1))
-          .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3))
-          .filter("e1.time < e2.time") 
-//          .filter("(e1.time - e2.time) < 600")
-//          .filter("(e1.time - e2.time) > -600" )
-//          .filter("(e2.time - e3.time) < 600")
-//          .filter("(e2.time - e3.time) > -600" )
-//          .filter("(e3.time - e1.time) < 600")
-//          .filter("(e3.time - e1.time) > -600" )
-          //.filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
-          //.filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
-          //.filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
-          .cache()
+        filterNodeID_3E(
+          base3EFind(tmpG, motifName, gETypes, et1, et2, et3)
+            .filter("c != a")
+            .filter("e1.time < e2.time"),
+          filterNodeIDs,num_motif_nodes
+        ).cache()
       //.filter("e2.time < e3.time").cache()
       else
-        tmpG
-          .find(gAtomicMotifs(motifName))
-          .filter("a != b")
-          .filter("b != c")
-          .filter("c != a")
-          .filter("e1.type = " + gETypes(et1))
-          .filter("e2.type = " + gETypes(et2))
-          .filter("e3.type = " + gETypes(et3)) 
-//          .filter("(e1.time - e2.time) < 600")
-//          .filter("(e1.time - e2.time) > -600" )
-//          .filter("(e2.time - e3.time) < 600")
-//          .filter("(e2.time - e3.time) > -600" )
-//          .filter("(e3.time - e1.time) < 600")
-//          .filter("(e3.time - e1.time) > -600" )
-          //.filter((col("e1.time") - col("e2.time")).between(-tDelta, tDelta)  )
-          //.filter((col("e2.time") - col("e3.time")).between(-tDelta, tDelta)  )
-          //.filter((col("e3.time") - col("e1.time")).between(-tDelta, tDelta)  )
-          .cache()
+        filterNodeID_3E(
+          base3EFind(tmpG, motifName, gETypes, et1, et2, et3)
+            .filter("c != a"),
+          filterNodeIDs,num_motif_nodes
+        ).cache()
     val selectEdgeArr = Array(
       "e1.src",
       "e1.type",
