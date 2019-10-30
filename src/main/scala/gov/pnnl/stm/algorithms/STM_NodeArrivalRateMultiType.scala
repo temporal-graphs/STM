@@ -171,6 +171,7 @@ object STM_NodeArrivalRateMultiType {
     fwriter.flush()
   }
 
+
   /**
     * main function of the object
     *
@@ -250,21 +251,40 @@ object STM_NodeArrivalRateMultiType {
 
     val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
-    val filterarr_nodeIds : Array[Int] = inputtag_varchar.filter(entry => {
-      // array should be used as a key / similarity code as they use referential equality.
-      val keyset :Set[String] = entry._6.map(k=>k.toString).toSet
-      val valset :Set[String] = entry._7.map(k=>k.toString).toSet
-      //convert char seq to string
+    println("filterset arr input ", filterarr.toList)
+//    val filter_nodeIds : Array[Int] = inputtag_varchar.filter(entry => {
+//      // array should be used as a key / similarity code as they use referential equality.
+//      val keyset :Set[String] = entry._6.map(k=>k.mkString("")).toSet
+//      val valset :Set[String] = entry._7.map(k=>k.mkString("")).toSet
+//      //convert char seq to string
+//      println(keyset , valset)
+//      val filterset :Set[String] = filterarr.toSet
+//      var isFilterID = false
+//      for(filter <-  filterset)
+//      {
+//        if (keyset.contains(filter) || valset.contains(filter))
+//          isFilterID = isFilterID | true
+//      }
+//      isFilterID
+//    }).flatMap(fEntry => Array(fEntry._1, fEntry._3)).distinct().collect()
+
+    val filter_nodeIds = inputtag_varchar.flatMap(entry=>{
+
+      var filterNode = scala.collection.mutable.Set.empty[Int]
+      val valset :List[String] = entry._7.map(k=>k.mkString("")).toList
+
       val filterset :Set[String] = filterarr.toSet
-      for(filter <-  filterset)
-      {
-        if (keyset.contains(filter) || valset.contains(filter))
-          {return true}
-      }
-      return false
-    }).flatMap(fEntry => Array(fEntry._1, fEntry._3)).distinct().collect()
-
-
+      for(filter <- filterset)
+        {
+          if(valset.indexOf(filter) %2 == 0) //src node
+            filterNode += entry._1
+          else if(valset.indexOf(filter) %2 == 1) //dst node
+            filterNode += entry._3
+        }
+      filterNode
+    }).distinct().collect()
+    println("filter node ids are ", filter_nodeIds.toList)
+    System.exit(-1)
 
     val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
                                                       Array.empty[Int]) ).cache()
@@ -276,7 +296,7 @@ object STM_NodeArrivalRateMultiType {
      *    * offsetProb: time offset of the motifs
      *    * avg_out_deg: out degree distribution of the input graph
      */
-    var local_res = processTAG(inputTAG, gDebug, clo)
+    var local_res = processTAG(inputTAG, gDebug, clo,filter_nodeIds)
 
     println("local res 1" + local_res._1)
 
@@ -297,7 +317,8 @@ object STM_NodeArrivalRateMultiType {
   def processTAG(
       baseTAG: gov.pnnl.datamodel.TAG,
       gDebug: Boolean,
-      clo: Map[String, String]
+      clo: Map[String, String],
+      filter_nodeIds: Array[vertexId]
   ): (ListBuffer[Double], ListBuffer[Long], Array[Double]) = {
 
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
@@ -356,11 +377,12 @@ object STM_NodeArrivalRateMultiType {
         num_iterations,
         gETypes,
         inputSimpleTAG,
-        tDelta
+        tDelta,
+        filter_nodeIds
       )
       (res._1, res._2, avg_out_deg)
     } else {
-      val res = complete_STM(gDebug, gETypes, inputSimpleTAG)
+      val res = complete_STM(gDebug, gETypes, inputSimpleTAG,filter_nodeIds)
       (res._1, res._2, avg_out_deg)
     }
 
@@ -548,7 +570,7 @@ object STM_NodeArrivalRateMultiType {
   def findAllITeM(gETypes: Array[eType],
                   call_id_val: Int,
                   initial_tag: SimpleTAGRDD,
-    dDelta: Long): GraphFrame = {
+    dDelta: Long,filter_nodeIds:Array[vertexId]): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
 
 
@@ -622,7 +644,7 @@ object STM_NodeArrivalRateMultiType {
   def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
-      initial_simple_tag: SimpleTAGRDD
+      initial_simple_tag: SimpleTAGRDD,filter_nodeIds:Array[vertexId]
   ): (ListBuffer[Double], ListBuffer[Long]) = {
     var call_id = -1
 
@@ -645,7 +667,7 @@ object STM_NodeArrivalRateMultiType {
     }
 
     try {
-      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration)
+      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filter_nodeIds)
       if (gDebug) {
         println(gMotifInfo.toList)
         println("number of edges in last graph", g.edges.count)
@@ -720,7 +742,8 @@ object STM_NodeArrivalRateMultiType {
       num_iterations: Int,
       gETypes: Array[Int],
       initial_simple_tag: SimpleTAGRDD,
-      tDelta:Long
+      tDelta:Long,
+      filter_nodeIds: Array[vertexId]
 
 
 
