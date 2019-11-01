@@ -193,7 +193,7 @@ object STM_NodeArrivalRateMultiType {
       .registerKryoClasses(Array.empty)
       .set("spark.default.parallelism","4")
       //.set("spark.driver.cores", "14")
-    .set("spark.sql.shuffle.partitions","8")
+    .set("spark.sql.shuffle.partitions","6")
 
     lazy val sparkSession = SparkSession
       .builder()
@@ -411,7 +411,7 @@ object STM_NodeArrivalRateMultiType {
     gMotifInfo += List(iso_v_cnt.toInt)
     println(gMotifInfo)
     //gOffsetInfo += List(0L)
-    g.filterEdges("type != -1").dropIsolatedVertices()
+    g_base.filterEdges("type != -1").dropIsolatedVertices()
   }
 
   def get_edge_from_row(row: Row): (Int, Int, Int, Long) = {
@@ -460,8 +460,8 @@ object STM_NodeArrivalRateMultiType {
       selctedMotifEdges.rdd.map(row => get_edge_from_row(row))
     write_motif_vertex_association_file(tmi_edges_rdd, motifName)
 
-    val newe = g.edges.except(selctedMotifEdges) 
-    val newv = g.vertices.except(v_deg_1) 
+    val newe = g_base.edges.except(selctedMotifEdges)
+    val newv = g_base.vertices.except(v_deg_1)
 
     write_vertex_independence(iso_edge_cnt * 2, iso_edge_cnt * 2)
     write_motif_independence(iso_edge_cnt, iso_edge_cnt)
@@ -622,7 +622,7 @@ object STM_NodeArrivalRateMultiType {
     g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs).cache()
     g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs).cache()
     g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs).cache()
-    g = findResidualEdg(g, "residualedge", gETypes).cache()
+    g = findResidualEdg(g, "residualedge", gETypes,filterNodeIDs).cache()
 
     if (gDebug) {
       println("FINAL after residual graph sizev ", g.vertices.count)
@@ -1286,7 +1286,7 @@ object STM_NodeArrivalRateMultiType {
          * first edge is always smaller time than 2nd one so no need to check
          */
 
-        val newEDF = tmpG.edges.except(multi_edges_df) 
+        val newEDF = g_base.edges.except(multi_edges_df)
         import sqlc.implicits._
         val newVRDD = newEDF
           .flatMap(
@@ -1377,7 +1377,7 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(6,6)
       }
 
-      val newEDF = tmpG.edges.except(selctedMotifEdges)
+      val newEDF = g_base.edges.except(selctedMotifEdges)
       import sqlc.implicits._
       val newVRDD = newEDF
         .flatMap(
@@ -2913,9 +2913,13 @@ object STM_NodeArrivalRateMultiType {
     * @param motif
     * @return
     */
-  def findResidualEdg(g: GraphFrame,
+  def findResidualEdg(g_base: GraphFrame,
                       motifName: String,
-                      gETypes: Array[Int]): GraphFrame = {
+                      gETypes: Array[Int],
+                      filterNodeIDs: Array[vertexId]): GraphFrame = {
+
+    val g = if(filterNodeIDs.length > 0 ) g_base.filterVertices( col("id").isin(filterNodeIDs: _*))
+    else g_base
 
     if (gDebug) {
       println("graph sizev ", g.vertices.count)
