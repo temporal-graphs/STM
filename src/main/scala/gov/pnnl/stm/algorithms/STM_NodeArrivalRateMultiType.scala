@@ -194,7 +194,7 @@ object STM_NodeArrivalRateMultiType {
       .set("spark.default.parallelism","4")
       //.set("spark.driver.cores", "14")
     .set("spark.sql.shuffle.partitions","6")
-
+    .set("spark.kryoserializer.buffer.max","2000m")
     lazy val sparkSession = SparkSession
       .builder()
       .appName("STM")
@@ -247,7 +247,12 @@ object STM_NodeArrivalRateMultiType {
     nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
     nodemapFile.flush()
 
-    val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
+    val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
+    //println("emtpy varchar", inputtag_varchartmp.count())
+    val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )) .cache()
+    //println("non emtpy varchar", inputtag_varchar.count())
+    inputtag_varchartmp.unpersist(true)
+    //System.exit(-1)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     println("filterset arr input ", filterarr.toList)
 

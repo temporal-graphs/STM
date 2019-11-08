@@ -18,7 +18,7 @@ object getPerYearAffiIDCitationGraph {
 
     val sparkConf = SparkContextInitializer
       .getSparkConf()
-      .setAppName("MAG").setMaster("local")
+      .setAppName("MAG").setMaster("local[*]")
     val sc = SparkContextInitializer.getSparkContext(sparkConf)
 
     Logger.getLogger("org").setLevel(Level.OFF)
@@ -46,7 +46,7 @@ object getPerYearAffiIDCitationGraph {
       // broadcast it to all executors
       val localPaperMap = sc.broadcast(yearlyPaperFromCitation).value
 
-      val thisYearFOS = sc
+      val thisYearAffi = sc
         .textFile(paperAuthorAffiID)
         .mapPartitionsWithIndex((pid, localdata) => {
           //println("local map size", localCitationMap.size)
@@ -60,9 +60,9 @@ object getPerYearAffiIDCitationGraph {
             })
         })
         .cache()
-
-      val driverThisYearFOS: Map[String, String] = thisYearFOS.collect().toMap
-      println("Driver count of this year FOS MAP size", year,driverThisYearFOS.size)
+      // Paper -> Affiliation
+      val driverThisYearFOS: Map[String, String] = thisYearAffi.collect().toMap
+      println("Driver count of this year Affiliation MAP size", year,driverThisYearFOS.size)
 
       val op =
         new PrintWriter(new File(perYearAffiIDCitationDir + "/" + year + ".txt"))

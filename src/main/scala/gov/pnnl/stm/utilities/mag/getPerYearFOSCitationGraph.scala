@@ -27,14 +27,12 @@ object getPerYearFOSCitationGraph {
     val yearArr = 1990 to 2017 toArray
 
     yearArr.foreach(year => {
-      val yearlyCitation: Map[String, String] = Source
-        .fromFile(perYearCitationDir + "/" + year + ".txt")
+      val yearlyCitation: Map[String, String] = Source.fromFile(perYearCitationDir + "/" + year + ".txt")
         .getLines()
         .map(paper => (paper.split(",")(0).trim, paper.split(",")(1).trim))
         .toMap
 
-      val yearlyPaperFromCitation: Map[String, Int] = Source
-        .fromFile(perYearCitationDir + "/" + year + ".txt")
+      val yearlyPaperFromCitation: Map[String, Int] = Source.fromFile(perYearCitationDir + "/" + year + ".txt")
         .getLines()
         .flatMap(
           paper =>
