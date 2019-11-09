@@ -161,8 +161,8 @@ object STM_NodeArrivalRateMultiType {
    * SO how do we get the upated values of gMotifInfo, gOffsetInfo etc...??? Because these are used only on the
    * driver JVM. partial results are received from the executor and the same global variable is updated on driver.
    */
-  var gVBirthTime: scala.collection.mutable.Map[Int, Long] =
-    scala.collection.mutable.Map.empty
+  var gVBirthTime: Map[Int, Long] =
+    Map.empty
 
   def writeAvgOutDegFile(avg_out_deg_fname: String,
                          avg_out_deg: Array[Double]): Unit = {
@@ -247,31 +247,35 @@ object STM_NodeArrivalRateMultiType {
     nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
     nodemapFile.flush()
 
-    val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
+    //val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
+    val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     println("filterset arr input ", filterarr.toList)
 
-    val filterNodeIDs_MaLo = inputtag_varchar.flatMap(entry=>{
-
-      var filterNode = scala.collection.mutable.Set.empty[Int]
-      val valset :List[String] = entry._7.map(k=>k.mkString("")).toList
-
-      val filterset :Set[String] = filterarr.toSet
-      for(filter <- filterset)
-        {
-          if(valset.indexOf(filter) %2 == 0) //src node
-            filterNode += entry._1
-          else if(valset.indexOf(filter) %2 == 1) //dst node
-            filterNode += entry._3
-        }
-      filterNode
-    }).distinct().collect()
+//    val filterNodeIDs_MaLo = inputtag_varchar.flatMap(entry=>{
+//
+//      var filterNode = scala.collection.mutable.Set.empty[Int]
+//      val valset :List[String] = entry._7.map(k=>k.mkString("")).toList
+//
+//      val filterset :Set[String] = filterarr.toSet
+//      for(filter <- filterset)
+//        {
+//          if(valset.indexOf(filter) %2 == 0) //src node
+//            filterNode += entry._1
+//          else if(valset.indexOf(filter) %2 == 1) //dst node
+//            filterNode += entry._3
+//        }
+//      filterNode
+//    }).distinct().collect()
+    val filterNodeIDs_MaLo = filterarr.map(fi => fi.hashCode)
     println("filter node ids are ", filterNodeIDs_MaLo.toList)
     println("filter node ids len", filterNodeIDs_MaLo.length)
 
     val filterNodeIDs_WoLo = sc.broadcast(filterNodeIDs_MaLo).value
+    //val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
+      //                                                Array.empty[Int]) ).cache()
     val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
-                                                      Array.empty[Int]) ).cache()
+                                                      Array.empty[Int]))
     import gov.pnnl.datamodel.TAG
     val inputTAG = new TAG(inputtag)
     /*
@@ -280,7 +284,7 @@ object STM_NodeArrivalRateMultiType {
      *    * offsetProb: time offset of the motifs
      *    * avg_out_deg: out degree distribution of the input graph
      */
-    var local_res = processTAG(inputTAG, gDebug, clo,filterNodeIDs_WoLo)
+    var local_res = processTAG(inputTAG, gDebug, clo,filterNodeIDs_WoLo,nodeFile,sc,sep)
 
     println("local res 1" + local_res._1)
 
@@ -302,7 +306,7 @@ object STM_NodeArrivalRateMultiType {
       baseTAG: gov.pnnl.datamodel.TAG,
       gDebug: Boolean,
       clo: Map[String, String],
-      filterNodeIDs: Array[vertexId]
+      filterNodeIDs: Array[vertexId],nodeFile: String,sc:SparkContext,sep: String
   ): (ListBuffer[Double], ListBuffer[Long], Array[Double]) = {
 
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
@@ -321,6 +325,12 @@ object STM_NodeArrivalRateMultiType {
     val num_iterations: Int = clo.getOrElse("-num_iterations", "3").toInt
 
 
+    val min_time: Long =
+      clo.getOrElse("-min_time", "0").toLong
+
+    val max_time: Long =
+      clo.getOrElse("-max_time", "0").toLong
+
     val deltaLimit: Boolean = clo.getOrElse("-delta_limit", "false").toBoolean
 
     val tDelta: Long = if(deltaLimit == true)
@@ -336,16 +346,16 @@ object STM_NodeArrivalRateMultiType {
      * Broacast the vertext arrival times to each cluster-node because it us used in look-up as
      * local Map
      */
-    val vAppearanceTime: RDD[(Int, Long)] =
-      this.get_vertex_birth_time(inputSimpleTAG).cache()
-    val vAppearanceTimeMap: scala.collection.mutable.Map[Int, Long] =
-      scala.collection.mutable.Map(vAppearanceTime.collect(): _*)
-
-    //write vertex birth time
-    vAppearanceTimeMap.values.foreach(t => gVertexBirthFWriter.println(t))
-    gVertexBirthFWriter.flush()
-    gVBirthTime = vAppearanceTimeMap
-    vAppearanceTime.unpersist(true)
+//    val vAppearanceTime: RDD[(Int, Long)] =
+//      this.get_vertex_birth_time(inputSimpleTAG).cache()
+//    val vAppearanceTimeMap: scala.collection.mutable.Map[Int, Long] =
+//      scala.collection.mutable.Map(vAppearanceTime.collect(): _*)
+//
+//    //write vertex birth time
+//    vAppearanceTimeMap.values.foreach(t => gVertexBirthFWriter.println(t))
+//    gVertexBirthFWriter.flush()
+//    gVBirthTime = vAppearanceTimeMap
+//    vAppearanceTime.unpersist(true)
     //https://stackoverflow.com/a/6628822/1413892
 
     //Write out degree per day file which is needed
@@ -362,7 +372,11 @@ object STM_NodeArrivalRateMultiType {
         gETypes,
         inputSimpleTAG,
         tDelta,
-        filterNodeIDs
+        filterNodeIDs,
+        min_time,
+        max_time,
+        nodeFile,
+        sc,sep
       )
       (res._1, res._2, avg_out_deg)
     } else {
@@ -732,9 +746,14 @@ object STM_NodeArrivalRateMultiType {
       sample_selection_prob: Double,
       num_iterations: Int,
       gETypes: Array[Int],
-      initial_simple_tag: SimpleTAGRDD,
+      initial_simple_tag_tmp: SimpleTAGRDD,
       tDelta:Long,
-      filterNodeIDs: Array[vertexId]
+      filterNodeIDs: Array[vertexId],
+    minTime :Long,
+    maxTime :Long,
+    nodeFile:String,
+    sc:SparkContext,
+    sep:String
 
 
 
@@ -743,39 +762,44 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Get total duration in seconds of input graph.
      */
-
-    val allTimes = initial_simple_tag
-      .filter(e => e._4 > -1)
-      .flatMap(nd => Iterator(nd._4, nd._4))
-    val minTime = allTimes.min
-    val maxTime = allTimes.max
-    val duration = maxTime - minTime
+    var duration :Long = 0
+    duration = maxTime - minTime
 
     if (!gDebug) {
       println("min time", minTime)
       println("max time", maxTime)
       println("duration in milliseconds", duration)
     }
-
     val num_windows: Int = sampling_population
     val time_in_window: Long = duration / num_windows
-    val total_edges: Long = initial_simple_tag.filter(e => e._4 > -1).count()
+    //val total_edges: Long = initial_simple_tag.filter(e => e._4 > -1).count()
     var window_prob: ListBuffer[Double] = ListBuffer.empty
 
+    var vAppearanceTimeMap: Map[Int, Long] = Map.empty
+
+
+    /*
+     * First get the importance
+     */
     for (i <- 0 to num_windows - 1) {
       val win_start_time = minTime + i * time_in_window
       val win_end_time = minTime + (i + 1) * time_in_window
       println("win start and end ", win_start_time, win_end_time)
 
-      val edges_in_current_window: Long = initial_simple_tag
-        .filter(
-          e =>
-            (e._4 >= win_start_time) //start and end time does not include -1
-              && (e._4 < win_end_time)
-        )
+      val edges_in_current_window  = TAGBuilder.init_rdd(nodeFile+ "/" + win_start_time +".txt",sc,
+                                                         sep)
+        .get_simple_tagrdd()
         .count()
+//      val edges_in_current_window: Long = initial_simple_tag
+//        .filter(
+//          e =>
+//            (e._4 >= win_start_time) //start and end time does not include -1
+//              && (e._4 < win_end_time)
+//        )
+//        .count()
       println(" edges in current window i = ", i, edges_in_current_window)
-      window_prob += edges_in_current_window.toDouble / total_edges
+      //window_prob += edges_in_current_window.toDouble / total_edges
+      window_prob += 1.0
     }
     println("prob is " + window_prob)
     gWindowSizeFWriter.println(window_prob.mkString(","))
@@ -818,12 +842,24 @@ object STM_NodeArrivalRateMultiType {
               .filterEdges(col("time") > (minTime + (i + 1) * time_in_window))
               .dropIsolatedVertices()
              */
-            val local_tag = initial_simple_tag.filter(
-              e =>
-                (e._4 >= (minTime + i * time_in_window)) &&
-                  (e._4 < (minTime + (i + 1) *
-                    time_in_window))
-            )
+            val win_start_time = minTime + i * time_in_window
+            val local_tag = TAGBuilder.init_rdd(nodeFile+ "/" + win_start_time +".txt",sc,
+                                            sep).get_simple_tagrdd()
+
+            val vAppearanceTime_local: RDD[(Int, Long)] =
+              this.get_vertex_birth_time(local_tag).cache()
+            val vAppearanceTimeMap_local: Map[Int, Long] =
+              Map(vAppearanceTime_local.collect(): _*)
+
+            //write vertex birth time
+            vAppearanceTimeMap_local.values.foreach(t => gVertexBirthFWriter.println(t))
+            gVertexBirthFWriter.flush()
+
+            vAppearanceTimeMap = vAppearanceTimeMap |+| vAppearanceTimeMap_local
+            gVBirthTime =  vAppearanceTimeMap
+            vAppearanceTime_local.unpersist(true)
+
+
             var call_id = 0
             try {
               findAllITeM(gETypes, call_id, local_tag,tDelta,filterNodeIDs)
