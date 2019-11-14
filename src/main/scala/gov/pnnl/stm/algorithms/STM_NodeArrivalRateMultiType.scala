@@ -194,6 +194,7 @@ object STM_NodeArrivalRateMultiType {
       .set("spark.default.parallelism","4")
       //.set("spark.driver.cores", "14")
     .set("spark.sql.shuffle.partitions","6")
+      .set("spark.executor.heartbeatInterval","100000")
 
     lazy val sparkSession = SparkSession
       .builder()
@@ -220,7 +221,6 @@ object STM_NodeArrivalRateMultiType {
       val kv = arg.split("=")
       clo += (kv(0) -> kv(1))
     }
-
     val sep: String =
       if (clo.getOrElse("-separator", ",").equalsIgnoreCase("\\t"))
         '\t'.toString
@@ -248,7 +248,8 @@ object STM_NodeArrivalRateMultiType {
     nodemapFile.flush()
 
     //val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
-    val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep)
+
+    val inputtag_varchar = null //TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     println("filterset arr input ", filterarr.toList)
 
@@ -274,8 +275,8 @@ object STM_NodeArrivalRateMultiType {
     val filterNodeIDs_WoLo = sc.broadcast(filterNodeIDs_MaLo).value
     //val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
       //                                                Array.empty[Int]) ).cache()
-    val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
-                                                      Array.empty[Int]))
+    val inputtag :TAGRDD = null //inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
+                                  //                    Array.empty[Int]))
     import gov.pnnl.datamodel.TAG
     val inputTAG = new TAG(inputtag)
     /*
@@ -341,7 +342,7 @@ object STM_NodeArrivalRateMultiType {
     val gETypes =
       clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
 
-    val inputSimpleTAG = baseTAG.get_simple_tagrdd
+    val inputSimpleTAG = null//baseTAG.get_simple_tagrdd
     /*
      * Broacast the vertext arrival times to each cluster-node because it us used in look-up as
      * local Map
@@ -786,10 +787,13 @@ object STM_NodeArrivalRateMultiType {
       val win_end_time = minTime + (i + 1) * time_in_window
       println("win start and end ", win_start_time, win_end_time)
 
-      val edges_in_current_window  = TAGBuilder.init_rdd(nodeFile+ "/" + win_start_time +".txt",sc,
-                                                         sep)
-        .get_simple_tagrdd()
-        .count()
+      /*val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile+ "/" + win_start_time +"graph.txt",sc,
+        sep).cache()
+      val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
+                                                      Array.empty[Int]) ).cache()
+
+      //val edges_in_current_window  = inputtag.count()
+       */
 //      val edges_in_current_window: Long = initial_simple_tag
 //        .filter(
 //          e =>
@@ -797,7 +801,7 @@ object STM_NodeArrivalRateMultiType {
 //              && (e._4 < win_end_time)
 //        )
 //        .count()
-      println(" edges in current window i = ", i, edges_in_current_window)
+      //println(" edges in current window i = ", i, edges_in_current_window)
       //window_prob += edges_in_current_window.toDouble / total_edges
       window_prob += 1.0
     }
@@ -843,10 +847,16 @@ object STM_NodeArrivalRateMultiType {
               .dropIsolatedVertices()
              */
             val win_start_time = minTime + i * time_in_window
-            val local_tag = TAGBuilder.init_rdd(nodeFile+ "/" + win_start_time +".txt",sc,
-                                            sep).get_simple_tagrdd()
+           // val local_tag = TAGBuilder.init_rdd(nodeFile+ "/" + win_start_time +".txt",sc,
+             //                               sep).get_simple_tagrdd()
 
-            val vAppearanceTime_local: RDD[(Int, Long)] =
+            val inputtag_varchar = TAGBuilder.init_tagrdd_varchar(nodeFile+ "/" + win_start_time +"graph.txt",sc,
+              sep)
+            val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
+              Array.empty[Int]) )
+
+            val local_tag = new TAG(inputtag).get_simple_tagrdd().cache()
+           /* val vAppearanceTime_local: RDD[(Int, Long)] =
               this.get_vertex_birth_time(local_tag).cache()
             val vAppearanceTimeMap_local: Map[Int, Long] =
               Map(vAppearanceTime_local.collect(): _*)
@@ -855,9 +865,18 @@ object STM_NodeArrivalRateMultiType {
             vAppearanceTimeMap_local.values.foreach(t => gVertexBirthFWriter.println(t))
             gVertexBirthFWriter.flush()
 
-            vAppearanceTimeMap = vAppearanceTimeMap |+| vAppearanceTimeMap_local
-            gVBirthTime =  vAppearanceTimeMap
-            vAppearanceTime_local.unpersist(true)
+            vAppearanceTimeMap_local.foreach(entry=>{
+              if(vAppearanceTimeMap.contains(entry._1) == false) {
+                vAppearanceTimeMap += (entry._1 -> entry._2)
+              }
+            })
+            if(i < 14)
+              vAppearanceTimeMap = Map.empty*/
+
+            vAppearanceTimeMap = Map.empty
+              gVBirthTime =  vAppearanceTimeMap
+            println("bVBirth time size is ", gVBirthTime.size)
+            //vAppearanceTime_local.unpersist(true)
 
 
             var call_id = 0
@@ -1058,7 +1077,7 @@ object STM_NodeArrivalRateMultiType {
           val node_time = gVBirthTime.getOrElse(nid, -1L)
           if (all_times.contains(node_time)) // new node so set its time as -1 for future
             {
-              gVBirthTime(nid) = -1L
+              gVBirthTime += (nid -> -1L)
             } else
             numReusedNodes = numReusedNodes + 1
 
@@ -1609,7 +1628,7 @@ object STM_NodeArrivalRateMultiType {
   ): Map[vertexId, vertexId] = {
 
     val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
-    val gVBirthTime_exec = gSC.broadcast(gVBirthTime).value
+    var gVBirthTime_exec = gSC.broadcast(gVBirthTime).value
 
     val reuse_node_info: Map[Int, Int] = mis_set
       .map(motifid => {
@@ -1687,7 +1706,7 @@ object STM_NodeArrivalRateMultiType {
              0.0
              1.1062647339606835E-5
                */
-              gVBirthTime_exec(nid) = -1L
+              gVBirthTime_exec += (nid -> -1L)
             } else
             numReusedNodes = numReusedNodes + 1
         }
