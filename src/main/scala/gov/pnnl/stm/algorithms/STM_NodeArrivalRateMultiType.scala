@@ -431,7 +431,7 @@ object STM_NodeArrivalRateMultiType {
     val spark = SparkSession.builder().getOrCreate()
 
 
-    val g = if(filterNodeIDs.length > 0 ) g_base.filterEdges( col("src").isin(filterNodeIDs: _*) ||
+    val g = if(filterNodeIDs.length > 0 ) g_base.filterEdges( col("src").isin(filterNodeIDs: _*) &&
       col("dst").isin(filterNodeIDs: _*))
         else g_base
     val sc = spark.sparkContext
@@ -952,7 +952,7 @@ object STM_NodeArrivalRateMultiType {
   def findSimultaniousMultiEdges(inputSimpleTAG: SimpleTAGRDD,filterNodeIDs:Array[vertexId]): SimpleTAGRDD = {
 
     val sim_e_base = if(filterNodeIDs.length > 0){ inputSimpleTAG.filter(e
-      => filterNodeIDs.contains(e._1) || filterNodeIDs.contains(e._3))}
+      => filterNodeIDs.contains(e._1) && filterNodeIDs.contains(e._3))}
     else
      { inputSimpleTAG }
     val sim_e = sim_e_base.map(e => (e, 1))
@@ -1086,7 +1086,7 @@ object STM_NodeArrivalRateMultiType {
                          filterNodeIDs:Array[vertexId]): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
 
-    val g = if(filterNodeIDs.length > 0 ) g_base.filterEdges( col("src").isin(filterNodeIDs: _*) ||
+    val g = if(filterNodeIDs.length > 0 ) g_base.filterEdges( col("src").isin(filterNodeIDs: _*) &&
       col("dst").isin(filterNodeIDs: _*))
     else g_base
 
@@ -2314,8 +2314,8 @@ object STM_NodeArrivalRateMultiType {
     else
       return valueSoFar.filter(
           col("a.id").isin(filterNodeIDs: _*)
-            || col("b.id").isin(filterNodeIDs: _*)
-            || col("c.id").isin(filterNodeIDs: _*)
+            && col("b.id").isin(filterNodeIDs: _*)
+            && col("c.id").isin(filterNodeIDs: _*)
         )
 
   }
@@ -2328,15 +2328,15 @@ object STM_NodeArrivalRateMultiType {
       return if (num_motif_nodes == 4)
                valueSoFar.filter(
                                   col("a.id").isin(filterNodeIDs: _*)
-                                  || col("b.id").isin(filterNodeIDs: _*)
-                                  || col("c.id").isin(filterNodeIDs: _*)
-                                  || col("d.id").isin(filterNodeIDs: _*)
+                                  && col("b.id").isin(filterNodeIDs: _*)
+                                  && col("c.id").isin(filterNodeIDs: _*)
+                                  && col("d.id").isin(filterNodeIDs: _*)
                                 )
              else
                valueSoFar.filter(
                                   col("a.id").isin(filterNodeIDs: _*)
-                                  || col("b.id").isin(filterNodeIDs: _*)
-                                  || col("c.id").isin(filterNodeIDs: _*)
+                                  && col("b.id").isin(filterNodeIDs: _*)
+                                  && col("c.id").isin(filterNodeIDs: _*)
                                 )
 
   }
@@ -2349,13 +2349,13 @@ object STM_NodeArrivalRateMultiType {
       return if (num_motif_nodes == 3)
         valueSoFar.filter(
           col("a.id").isin(filterNodeIDs: _*)
-            || col("b.id").isin(filterNodeIDs: _*)
-            || col("c.id").isin(filterNodeIDs: _*)
+            && col("b.id").isin(filterNodeIDs: _*)
+            && col("c.id").isin(filterNodeIDs: _*)
         )
       else
         valueSoFar.filter(
           col("a.id").isin(filterNodeIDs: _*)
-            || col("b.id").isin(filterNodeIDs: _*)
+            && col("b.id").isin(filterNodeIDs: _*)
         )
 
   }
