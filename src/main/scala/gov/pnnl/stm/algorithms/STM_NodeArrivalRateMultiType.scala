@@ -52,68 +52,69 @@ object STM_NodeArrivalRateMultiType {
   val gOffsetInfo = ListBuffer.empty[List[Long]]
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
   val gMotifProbFile = new File(
-    t1 + "MotifProb_Rate_" + prefix_annotation + ".txt"
+    t1 + "_MotifProb_Rate_" + prefix_annotation + ".txt"
   )
   val gMotifProbFWr = new PrintWriter(gMotifProbFile)
   val gMotifAllProbFile = new File(
-    t1 + "MotifProb_AbsCount_" + prefix_annotation + ".txt"
+    t1 + "_MotifProb_AbsCount_" + prefix_annotation + ".txt"
   )
   val gMotifAllProbFWr = new PrintWriter(gMotifAllProbFile)
+  gMotifAllProbFWr.println("[")
   val gMotifOrbitFile = new File(
-    t1 + "MotifOrbit_Independence_" + prefix_annotation + ".txt"
+    t1 + "_MotifOrbit_Independence_" + prefix_annotation + ".txt"
   )
   val gMotifOrbitFWr = new PrintWriter(gMotifOrbitFile)
 
   val gMotifOrbitFileAll = new File(
-    t1 + "MotifOrbit_Independence_AbsCount" + prefix_annotation +
+    t1 + "_MotifOrbit_Independence_AbsCount" + prefix_annotation +
       ".txt"
   )
   val gMotifOrbitAllFWr = new PrintWriter(gMotifOrbitFileAll)
 
   val gMotifAllProbFile_Individual = new File(
-    t1 + "MotifProb_AbsCount_Individual" +
+    t1 + "_MotifProb_AbsCount_Individual" +
       prefix_annotation + ".txt"
   )
   val gMotifAllProb_IndividualFWr = new PrintWriter(
     gMotifAllProbFile_Individual
   )
-  val gOffsetFile = new File(t1 + "Offset_Rate_" + prefix_annotation + ".txt")
+  val gOffsetFile = new File(t1 + "_Offset_Rate_" + prefix_annotation + ".txt")
   val gOffsetFWriter = new PrintWriter(gOffsetFile)
   val gOffsetAllFile = new File(
-    t1 + "Offset_AbsCount_" + prefix_annotation + ".txt"
+    t1 + "_Offset_AbsCount_" + prefix_annotation + ".txt"
   )
   val gOffsetAllFWriter = new PrintWriter(gOffsetAllFile)
   val gVertexBirthFile = new File(
-    t1 + "VertexBirth_" + prefix_annotation + ".txt"
+    t1 + "_VertexBirth_" + prefix_annotation + ".txt"
   )
   val gVertexBirthFWriter = new PrintWriter(gVertexBirthFile)
   val gMotifIndFile = new File(
-    t1 + "Motif_Independence_" + prefix_annotation + ".txt"
+    t1 + "_Motif_Independence_" + prefix_annotation + ".txt"
   )
   val gMotifIndFWr = new PrintWriter(
     new FileWriter(gMotifIndFile, true)
   )
   val gVtxIndFile = new File(
-    t1 + "Vertex_Independence_" + prefix_annotation + ".txt"
+    t1 + "_Vertex_Independence_" + prefix_annotation + ".txt"
   )
   val gVtxIndFWr = new PrintWriter(
     new FileWriter(gVtxIndFile, true)
   )
   val gOrbtVtxAssoFile = new File(
-    t1 + "Orbit_Association_" + prefix_annotation + ".txt"
+    t1 + "_Orbit_Association_" + prefix_annotation + ".txt"
   )
   val gOrbtVtxAssoFWr = new PrintWriter(
     new FileWriter(gOrbtVtxAssoFile, true)
   )
   val gMotifVtxAssoFile = new File(
-    t1 + "Motif_Association_" + prefix_annotation + ".txt"
+    t1 + "_Motif_Association_" + prefix_annotation + ".txt"
   )
   val gMotifVtxAssoFWr = new PrintWriter(
     new FileWriter(gMotifVtxAssoFile, true)
   )
 
   val gHigherGraphFile = new File(
-    t1 + "HigherGraph_" + prefix_annotation + "" + ".txt"
+    t1 + "_HigherGraph_" + prefix_annotation + "" + ".txt"
   )
   val gHigherGraphFWriter = new PrintWriter(
     new FileWriter(gHigherGraphFile, true)
@@ -121,14 +122,14 @@ object STM_NodeArrivalRateMultiType {
 
 
   val gWindowTimeFile = new File(
-                                   t1 + "WindowTime_" + prefix_annotation + "" + ".txt"
+                                   t1 + "_WindowTime_" + prefix_annotation + "" + ".txt"
                                  )
   val gWindowTimeFWriter = new PrintWriter(
                                              new FileWriter(gWindowTimeFile, true)
                                            )
 
   val gWindowSizeFile = new File(
-                                  t1 + "WindowSize_" + prefix_annotation + "" + ".txt"
+                                  t1 + "_WindowSize_" + prefix_annotation + "" + ".txt"
                                 )
   val gWindowSizeFWriter = new PrintWriter(
                                             new FileWriter(gWindowSizeFile, true)
@@ -296,7 +297,10 @@ object STM_NodeArrivalRateMultiType {
     //      ._2,
     //                                 duration, v_size)
 
-    //write average out degree file
+    //write average out degree file and motif count json file
+    gMotifAllProbFWr.println("]")
+    gMotifAllProbFWr.flush()
+    gMotifAllProb_IndividualFWr.flush()
     writeAvgOutDegFile(avg_outdeg_file, local_res._3)
 
     moveFilesToOutdir(output_base_dir)
@@ -637,6 +641,28 @@ object STM_NodeArrivalRateMultiType {
 
   }
 
+  def jsonString(gMotifInfo: ListBuffer[List[eType]]): String = {
+    return "{" +
+            "\"m0\":[" + gMotifInfo.slice(0,3).mkString(",") + "]," +
+             "\"m1\":[" + gMotifInfo.slice(3,4).mkString(",") + "],"+
+             "\"m2\":[" + gMotifInfo.slice(4,5).mkString(",") + "]," +
+             "\"m3\":[" + gMotifInfo.slice(5,6).mkString(",") + "],"+
+             "\"m4\":[" + gMotifInfo.slice(6,8).mkString(",") + "],"+
+             "\"m5\":[" + gMotifInfo.slice(8,12).mkString(",") + "],"+
+             "\"m6\":[" + gMotifInfo.slice(12,16).mkString(",") + "],"+
+             "\"m7\":[" + gMotifInfo.slice(16,20).mkString(",") + "],"+
+             "\"m8\":[" + gMotifInfo.slice(20,25).mkString(",") + "],"+
+             "\"m9\":[" + gMotifInfo.slice(25,28).mkString(",") + "],"+
+             "\"m10\":[" + gMotifInfo.slice(28,33).mkString(",") + "],"+
+             "\"m11\":[" + gMotifInfo.slice(33,38).mkString(",") + "],"+
+             "\"m12\":[" + gMotifInfo.slice(38,42).mkString(",") + "],"+
+             "\"m13\":[" + gMotifInfo.slice(42,46).mkString(",") + "],"+
+             "\"m14\":[" + gMotifInfo.slice(46,50).mkString(",") + "],"+
+             "\"m15\":[" + gMotifInfo.slice(50,52).mkString(",") + "]"
+            "}"
+
+  }
+
   def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
@@ -681,7 +707,7 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Write current GMotifInfo to the "All" file
      */
-    gMotifAllProbFWr.println(1 + "," + 1 + "," + gMotifInfo.flatten.mkString(","))
+    gMotifAllProbFWr.println(1 + "," + 1 + "," + jsonString(gMotifInfo))
     gMotifAllProbFWr.flush()
     gOffsetAllFWriter.println(
       1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
@@ -2947,8 +2973,8 @@ object STM_NodeArrivalRateMultiType {
       val num_residual_edges = selctedMotifEdges.count()
       try {
         if (selctedMotifEdges.head(1).isEmpty) {
-          gMotifAllProb_IndividualFWr.println("redi e", List(0))
-          gMotifInfo += List(0)
+          gMotifAllProb_IndividualFWr.println("redi e", List(0,0))
+          gMotifInfo += List(0,0)
 
           // vertext INDE is always 1 as these are residual edgea and all the v will be distict
           // If not distinct then would have been part of an earlier motif
@@ -2963,8 +2989,8 @@ object STM_NodeArrivalRateMultiType {
           val sw = new StringWriter
           e.printStackTrace(new PrintWriter(sw))
           println("\n Exception is  " + sw.toString())
-          gMotifAllProb_IndividualFWr.println("redi e", List(0))
-          gMotifInfo += List(0)
+          gMotifAllProb_IndividualFWr.println("redi e", List(0,0))
+          gMotifInfo += List(0,0)
           write_vertex_independence(0,0)
           write_motif_independence(0,0)
           //gOffsetInfo += List(0L)
