@@ -190,6 +190,7 @@ object STM_NodeArrivalRateMultiType {
      *
      * because spark could not initialize multiple spark context for the singleton object
      */
+    val t_start = System.nanoTime()
     lazy val sparkConf = new SparkConf()
       .registerKryoClasses(Array.empty)
       .set("spark.default.parallelism","4")
@@ -303,8 +304,20 @@ object STM_NodeArrivalRateMultiType {
     gMotifAllProb_IndividualFWr.flush()
     writeAvgOutDegFile(avg_outdeg_file, local_res._3)
 
-    moveFilesToOutdir(output_base_dir)
+    try {
+      moveFilesToOutdir(output_base_dir)
+      }catch {
+        case e: Exception => {
+          println("\nERROR: Moving file = ")
+          val sw = new StringWriter
+          e.printStackTrace(new PrintWriter(sw))
+          println("\n Exception is  " + sw.toString())
+        }
 
+        val t_end = System.nanoTime()
+        println("Total time to run is " + (t_end - t_start) / 1000000000)
+
+      }
   }
 
   def processTAG(
