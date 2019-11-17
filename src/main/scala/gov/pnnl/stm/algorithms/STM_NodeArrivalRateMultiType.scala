@@ -240,7 +240,7 @@ object STM_NodeArrivalRateMultiType {
     val output_base_dir = clo.getOrElse("-base_out_dir", "./output/testout/")
 
     myprintln("input paramters are :" + clo.toString)
-    myprintln("Spark paramters are " + sc.getConf.getAll.foreach(myprintln))
+    myprintln("Spark paramters are " + sc.getConf.getAll.foreach(println))
 
     /*
      * Get the base tag rdd which has 4 things: src etype dst time
@@ -261,7 +261,7 @@ object STM_NodeArrivalRateMultiType {
     inputtag_varchartmp.unpersist(true)
     //System.exit(-1)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
-    myprintln("filterset arr input ", filterarr.toList)
+    myprintln("filterset arr input "+ filterarr.toList)
 
     val filterNodeIDs_MaLo = inputtag_varchar.flatMap(entry=>{
 
@@ -278,8 +278,8 @@ object STM_NodeArrivalRateMultiType {
         }
       filterNode
     }).distinct().collect()
-    myprintln("filter node ids are ", filterNodeIDs_MaLo.toList)
-    myprintln("filter node ids len", filterNodeIDs_MaLo.length)
+    myprintln("filter node ids are "+ filterNodeIDs_MaLo.toList)
+    myprintln("filter node ids len"+ filterNodeIDs_MaLo.length)
 
     val filterNodeIDs_WoLo = sc.broadcast(filterNodeIDs_MaLo).value
     val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
@@ -821,7 +821,7 @@ object STM_NodeArrivalRateMultiType {
               && (e._4 < win_end_time)
         )
         .count()
-      myprintln(" edges in current window i = ", i, edges_in_current_window)
+      myprintln(" edges in current window i = "+ i+ edges_in_current_window)
       window_prob += edges_in_current_window.toDouble / total_edges
     }
     myprintln("prob is " + window_prob)
@@ -2466,7 +2466,7 @@ object STM_NodeArrivalRateMultiType {
         reuse_node_info_star = res._1
         avg_reuse_temporal_offset_info_star = res._2
         val newGraph = res._3.cache()
-        myprintln("Sneaky graph e ", newGraph.edges.count())
+        myprintln("Sneaky graph e "+ newGraph.edges.count())
         filterNodeID_3E(
           base3EFind(newGraph, motifName, gETypes, et1, et2, et3)
             .filter("c != d")
@@ -2629,7 +2629,7 @@ object STM_NodeArrivalRateMultiType {
       .zip(avg_reuse_temporal_offset_info.toList))
       .map { case (x, y) => x + y }
 
-    myprintln("edge offset at triad", gOffsetInfo)
+    myprintln("edge offset at triad"+ gOffsetInfo)
     validMotifsArray
   }
 
@@ -2719,7 +2719,7 @@ object STM_NodeArrivalRateMultiType {
                          num_motif_nodes: Int,
                          num_motif_edges: Int,
                          tDelta : Long, filterNodeIDs:Array[vertexId]): RDD[(Int, Int, Int, Long)] = {
-    myprintln(" Staring 2e3v motif nV, vE", num_motif_nodes, num_motif_edges)
+    myprintln(" Staring 2e3v motif nV, vE"+ num_motif_nodes, num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
     
     
