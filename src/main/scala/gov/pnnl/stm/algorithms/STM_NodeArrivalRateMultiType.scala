@@ -173,6 +173,11 @@ object STM_NodeArrivalRateMultiType {
   }
 
 
+  def myprintln(str:String): Unit =
+  {
+  if(gDebug)
+    println(str)
+  }
   /**
     * main function of the object
     *
@@ -227,15 +232,15 @@ object STM_NodeArrivalRateMultiType {
       if (clo.getOrElse("-separator", ",").equalsIgnoreCase("\\t"))
         '\t'.toString
       else clo.getOrElse("-separator", ",")
-    println("sep is " + sep)
+    myprintln("sep is " + sep)
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
     val avg_outdeg_file =
       clo.getOrElse("-avg_outdeg_file", nodeFile + "avg_outdeg.csv")
 
     val output_base_dir = clo.getOrElse("-base_out_dir", "./output/testout/")
 
-    println("input paramters are :" + clo.toString)
-    println("Spark paramters are ", sc.getConf.getAll.foreach(println))
+    myprintln("input paramters are :" + clo.toString)
+    myprintln("Spark paramters are " + sc.getConf.getAll.foreach(myprintln))
 
     /*
      * Get the base tag rdd which has 4 things: src etype dst time
@@ -256,7 +261,7 @@ object STM_NodeArrivalRateMultiType {
     inputtag_varchartmp.unpersist(true)
     //System.exit(-1)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
-    println("filterset arr input ", filterarr.toList)
+    myprintln("filterset arr input ", filterarr.toList)
 
     val filterNodeIDs_MaLo = inputtag_varchar.flatMap(entry=>{
 
@@ -273,8 +278,8 @@ object STM_NodeArrivalRateMultiType {
         }
       filterNode
     }).distinct().collect()
-    println("filter node ids are ", filterNodeIDs_MaLo.toList)
-    println("filter node ids len", filterNodeIDs_MaLo.length)
+    myprintln("filter node ids are ", filterNodeIDs_MaLo.toList)
+    myprintln("filter node ids len", filterNodeIDs_MaLo.length)
 
     val filterNodeIDs_WoLo = sc.broadcast(filterNodeIDs_MaLo).value
     val inputtag :TAGRDD = inputtag_varchar.map(e=> (e._1, e._2, e._3, e._4,0.0,Array.empty[Int],
@@ -289,7 +294,7 @@ object STM_NodeArrivalRateMultiType {
      */
     var local_res = processTAG(inputTAG, gDebug, clo,filterNodeIDs_WoLo)
 
-    println("local res 1" + local_res._1)
+    myprintln("local res 1" + local_res._1)
 
     //write json file
     // val out_file_os_path = new PrintWriter(new File(out_json_file_os_path))
@@ -308,16 +313,14 @@ object STM_NodeArrivalRateMultiType {
       moveFilesToOutdir(output_base_dir)
       }catch {
         case e: Exception => {
-          println("\nERROR: Moving file = ")
+          myprintln("\nERROR: Moving file = ")
           val sw = new StringWriter
           e.printStackTrace(new PrintWriter(sw))
-          println("\n Exception is  " + sw.toString())
+          myprintln("\n Exception is  " + sw.toString())
         }
-
-        val t_end = System.nanoTime()
-        println("Total time to run is " + (t_end - t_start) / 1000000000)
-
       }
+    val t_end = System.nanoTime()
+    myprintln("Total time to run is " + (t_end - t_start) / 1000000000)
   }
 
   def processTAG(
@@ -456,7 +459,7 @@ object STM_NodeArrivalRateMultiType {
 
     import org.apache.spark.sql.functions._
 
-    println("in isolated edge")
+    myprintln("in isolated edge")
     if (gDebug) {
       println("graph sizev ", g.vertices.count)
       println("graph size e", g.edges.count)
@@ -710,10 +713,10 @@ object STM_NodeArrivalRateMultiType {
       }
     } catch {
       case e: Exception => {
-        println("\nERROR: Call id = " + call_id)
+        myprintln("\nERROR: Call id = " + call_id)
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
       }
     }
 
@@ -809,7 +812,7 @@ object STM_NodeArrivalRateMultiType {
     for (i <- 0 to num_windows - 1) {
       val win_start_time = minTime + i * time_in_window
       val win_end_time = minTime + (i + 1) * time_in_window
-      println("win start and end ", win_start_time, win_end_time)
+      myprintln("win start and end "+ win_start_time, win_end_time)
 
       val edges_in_current_window: Long = initial_simple_tag
         .filter(
@@ -818,10 +821,10 @@ object STM_NodeArrivalRateMultiType {
               && (e._4 < win_end_time)
         )
         .count()
-      println(" edges in current window i = ", i, edges_in_current_window)
+      myprintln(" edges in current window i = ", i, edges_in_current_window)
       window_prob += edges_in_current_window.toDouble / total_edges
     }
-    println("prob is " + window_prob)
+    myprintln("prob is " + window_prob)
     gWindowSizeFWriter.println(window_prob.mkString(","))
     gWindowSizeFWriter.flush()
     var gMotifInfo_global = ListBuffer.empty[Double]
@@ -839,7 +842,7 @@ object STM_NodeArrivalRateMultiType {
         val rn = scala.util.Random
         if ((rn.nextDouble() < sample_selection_prob) || currWinID == 0) //forcing i==0 so that atleast one is picked
           {
-            println(" i is " + i)
+            myprintln(" i is " + i)
             gVtxIndFWr.println(
               "num_v_nonverlapping,num_v_max,v_independence_" + itr + "_" + i
             )
@@ -873,10 +876,10 @@ object STM_NodeArrivalRateMultiType {
               findAllITeM(gETypes, call_id, local_tag,tDelta,filterNodeIDs)
             } catch {
               case e: Exception => {
-                println("\nERROR: Call id = " + call_id)
+                myprintln("\nERROR: Call id = " + call_id)
                 val sw = new StringWriter
                 e.printStackTrace(new PrintWriter(sw))
-                println("\n Exception is  " + sw.toString())
+                myprintln("\n Exception is  " + sw.toString())
               }
             }
 
@@ -904,7 +907,7 @@ object STM_NodeArrivalRateMultiType {
                 .map(f1 => f1.toDouble / time_in_window)
                 .map(m => (m / window_prob(i)))
 
-              println(
+              myprintln(
                 "gmotif info is empty " + gMotifInfo_itr_local.mkString("&&")
               )
             } else {
@@ -933,7 +936,7 @@ object STM_NodeArrivalRateMultiType {
                 gOffsetInfo_itr_local.zip(weighted_offset_info).map {
                   case (x, y) => x + y
                 }
-              println(
+              myprintln(
                 "gmotif info is empty " + gMotifInfo_itr_local.mkString("&&")
               )
             }
@@ -1030,7 +1033,7 @@ object STM_NodeArrivalRateMultiType {
       case e: Exception =>
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
         gMotifAllProb_IndividualFWr.println(
           "sim_e",
           List.fill(num_motif_nodes + 1) { 0 }
@@ -1180,7 +1183,7 @@ object STM_NodeArrivalRateMultiType {
           case e: Exception =>
             val sw = new StringWriter
             e.printStackTrace(new PrintWriter(sw))
-            println("\n Exception is  " + sw.toString())
+            myprintln("\n Exception is  " + sw.toString())
             gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
             gOffsetInfo += List(-1L,-1L,-1L)
@@ -1305,8 +1308,8 @@ object STM_NodeArrivalRateMultiType {
         //motif independence is always 1 here if it exists
         write_motif_independence(8,8)
 
-        println("total multi edges are : ", total_multi_edges)
-        println("avg avg_offset_time is ", eMean)
+        myprintln("total multi edges are : " +total_multi_edges)
+        myprintln("avg avg_offset_time is " + eMean)
         val multi_edges_df = sqlc.createDataFrame(multi_edges_to_remove)
 
         // For reuse_node_info: For every motif, both the nodes are reused for the 2nd edge
@@ -2007,7 +2010,7 @@ object STM_NodeArrivalRateMultiType {
       case e: Exception =>
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
         gMotifAllProb_IndividualFWr.println(
           "4env ",
           List.fill(num_motif_nodes + 1) { 0 }
@@ -2075,8 +2078,8 @@ object STM_NodeArrivalRateMultiType {
       num_nonoverlapping_m * num_motif_nodes
     )
 
-    println("quad " + gMotifInfo)
-    println("quad time" + gOffsetInfo)
+    myprintln("quad " + gMotifInfo)
+    myprintln("quad time" + gOffsetInfo)
     // Get time offset infor
     val cnt_validMotifs = true_mis_set_rdd.count()
     updateEdgeOffset(true_mis_set_rdd, num_motif_edges)
@@ -2241,7 +2244,7 @@ object STM_NodeArrivalRateMultiType {
           .collect()
 
     val topK_V = topKOut.map(row => (row.getAs[Int](0)))
-    println("top k are ", k, topK_V.toList)
+    myprintln("top k are "+ k+ topK_V.toList)
     val in_out_star_edges =
       if (motifName.equalsIgnoreCase("outstar"))
         tmpG.find("(a)-[e1]->(b)").filter(col("a.id").isin(topK_V: _*)) 
@@ -2286,7 +2289,7 @@ object STM_NodeArrivalRateMultiType {
             } else
               local_star_map(vid) = current_motif_edges += e
           })
-          println(partId, local_star_map)
+          myprintln(partId+ local_star_map.toString())
           local_high_star_motifs.toIterator
         })
          
@@ -2457,13 +2460,13 @@ object STM_NodeArrivalRateMultiType {
     val overlappingMotifs =
       if (num_motif_nodes == 4) {
 
-        println("original graph e ", tmpG.edges.count())
+        myprintln("original graph e " + tmpG.edges.count())
         val res =
           topKStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName)
         reuse_node_info_star = res._1
         avg_reuse_temporal_offset_info_star = res._2
         val newGraph = res._3.cache()
-        println("Sneaky graph e ", newGraph.edges.count())
+        myprintln("Sneaky graph e ", newGraph.edges.count())
         filterNodeID_3E(
           base3EFind(newGraph, motifName, gETypes, et1, et2, et3)
             .filter("c != d")
@@ -2522,7 +2525,7 @@ object STM_NodeArrivalRateMultiType {
       case e: Exception => {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
         gMotifAllProb_IndividualFWr.println(
           "3env",
           List.fill(num_motif_nodes + 1) { 0 }
@@ -2601,8 +2604,8 @@ object STM_NodeArrivalRateMultiType {
       true_mis_set_rdd
     )
 
-    println("sneaky star gMotif ", reuse_node_info_star.values.toList)
-    println("Non sneaky star gMotif ", reuse_node_info.values.toList)
+    myprintln("sneaky star gMotif " + reuse_node_info_star.values.toList)
+    myprintln("Non sneaky star gMotif " + reuse_node_info.values.toList)
 
     val local_res = (reuse_node_info_star.values.toList
       .zip(reuse_node_info.values.toList))
@@ -2626,7 +2629,7 @@ object STM_NodeArrivalRateMultiType {
       .zip(avg_reuse_temporal_offset_info.toList))
       .map { case (x, y) => x + y }
 
-    println("edge offset at triad", gOffsetInfo)
+    myprintln("edge offset at triad", gOffsetInfo)
     validMotifsArray
   }
 
@@ -2641,7 +2644,7 @@ object STM_NodeArrivalRateMultiType {
       get_nonoverlapping_motif_inpartition(selctedMotifEdges).cache()
 
     try {
-      println(
+      myprintln(
         " selctedMotifEdges_NonOverRDD count is " + selctedMotifEdges_NonOverRDD
           .count()
       )
@@ -2649,7 +2652,7 @@ object STM_NodeArrivalRateMultiType {
       case e: Exception => {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
 
       }
     }
@@ -2716,7 +2719,7 @@ object STM_NodeArrivalRateMultiType {
                          num_motif_nodes: Int,
                          num_motif_edges: Int,
                          tDelta : Long, filterNodeIDs:Array[vertexId]): RDD[(Int, Int, Int, Long)] = {
-    println(" Staring 2e3v motif nV, vE", num_motif_nodes, num_motif_edges)
+    myprintln(" Staring 2e3v motif nV, vE", num_motif_nodes, num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
     
     
@@ -2772,7 +2775,7 @@ object STM_NodeArrivalRateMultiType {
       case e: Exception => {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
         gMotifAllProb_IndividualFWr.println(
           "2env",
           List.fill(num_motif_nodes + 1) { 0 }
@@ -2850,7 +2853,7 @@ object STM_NodeArrivalRateMultiType {
     )
     gMotifInfo += reuse_node_info.values.toList
 
-    println("Writing motif ind in 2ENv")
+    myprintln("Writing motif ind in 2ENv")
     write_motif_independence(num_overlapping_m, num_nonoverlapping_m)
     val v_distinct_cnt = get_v_distinct_cnt_from_true_mis_edges(
       validMotifsArray
@@ -3002,7 +3005,7 @@ object STM_NodeArrivalRateMultiType {
         case e: Exception => {
           val sw = new StringWriter
           e.printStackTrace(new PrintWriter(sw))
-          println("\n Exception is  " + sw.toString())
+          myprintln("\n Exception is  " + sw.toString())
           gMotifAllProb_IndividualFWr.println("redi e", List(0,0))
           gMotifInfo += List(0,0)
           write_vertex_independence(0,0)
@@ -3107,20 +3110,20 @@ object STM_NodeArrivalRateMultiType {
       moveFileInner(gHigherGraphFile)
 
       val directory = new File(".")
-      println("curr dir is ", directory.getAbsolutePath)
+      myprintln("curr dir is "+ directory.getAbsolutePath)
       val pattern = "^.*" + t1 + ".*.txt$"
-      println("\nFiles that match regular expression: " + pattern)
+      myprintln("\nFiles that match regular expression: " + pattern)
       val filter: FileFilter = new RegexFileFilter("^.*" + t1 + ".*.txt$")
       val files = directory.listFiles(filter)
 
-      println("Files to move are ", files.toList)
+      myprintln("Files to move are "+ files.toList)
       files.foreach(afile => moveFileInner(afile))
     } catch {
       case e: Exception => {
-        println("\nERROR: Failed to move files = ")
+        myprintln("\nERROR: Failed to move files = ")
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
-        println("\n Exception is  " + sw.toString())
+        myprintln("\n Exception is  " + sw.toString())
       }
     }
 
