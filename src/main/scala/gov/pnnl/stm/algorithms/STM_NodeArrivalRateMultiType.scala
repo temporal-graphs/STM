@@ -870,9 +870,10 @@ object STM_NodeArrivalRateMultiType {
             /*
              * Write current GMotifInfo to the "All" file
              */
-            gMotifAllProbFWr.println(
-              itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
-            )
+            gMotifAllProbFWr.println(1 + "," + 1 + "," + jsonString(gMotifInfo))
+            //gMotifAllProbFWr.println(
+              //itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
+            //)
             gMotifAllProbFWr.flush()
             gOffsetAllFWriter.println(
               itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
