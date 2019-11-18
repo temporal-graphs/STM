@@ -682,7 +682,7 @@ object STM_NodeArrivalRateMultiType {
     var jsonstr :StringBuilder = new StringBuilder("")
     for(i <- 0 until gMotifInfo.length)
     {
-      if(i == gMotifInfo.length)
+      if(i == gMotifInfo.length - 1 )
         jsonstr.append("\"m" + i+ "\":[" + gMotifInfo(i).mkString(",") + "]")
       else
         jsonstr.append("\"m" + i+ "\":[" + gMotifInfo(i).mkString(",") + "],")
