@@ -812,7 +812,7 @@ object STM_NodeArrivalRateMultiType {
     for (i <- 0 to num_windows - 1) {
       val win_start_time = minTime + i * time_in_window
       val win_end_time = minTime + (i + 1) * time_in_window
-      myprintln("win start and end "+ win_start_time, win_end_time)
+      myprintln("win start and end "+ win_start_time+ win_end_time)
 
       val edges_in_current_window: Long = initial_simple_tag
         .filter(
@@ -2719,7 +2719,7 @@ object STM_NodeArrivalRateMultiType {
                          num_motif_nodes: Int,
                          num_motif_edges: Int,
                          tDelta : Long, filterNodeIDs:Array[vertexId]): RDD[(Int, Int, Int, Long)] = {
-    myprintln(" Staring 2e3v motif nV, vE"+ num_motif_nodes, num_motif_edges)
+    myprintln(" Staring 2e3v motif nV, vE"+ num_motif_nodes+ num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
     
     
