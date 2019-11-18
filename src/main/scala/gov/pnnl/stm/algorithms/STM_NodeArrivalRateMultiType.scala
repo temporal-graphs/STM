@@ -320,7 +320,7 @@ object STM_NodeArrivalRateMultiType {
         }
       }
     val t_end = System.nanoTime()
-    myprintln("Total time to run is " + (t_end - t_start) / 1000000000)
+    println("Total time to run is " + (t_end - t_start) / 1000000000)
   }
 
   def processTAG(
