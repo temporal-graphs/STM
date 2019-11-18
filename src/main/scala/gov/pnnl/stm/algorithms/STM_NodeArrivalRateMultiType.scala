@@ -434,7 +434,7 @@ object STM_NodeArrivalRateMultiType {
     write_motif_independence(iso_v_cnt, iso_v_cnt)
 
     gMotifInfo += List(iso_v_cnt.toInt)
-    println(gMotifInfo)
+    myprintln(gMotifInfo.toString)
     //gOffsetInfo += List(0L)
     g_base.filterEdges("type != -1").dropIsolatedVertices()
   }
@@ -683,9 +683,9 @@ object STM_NodeArrivalRateMultiType {
     for(i <- 0 until gMotifInfo.length)
     {
       if(i == gMotifInfo.length)
-        jsonstr.append("\"m\"" + i+ ":[" + gMotifInfo(i).mkString(",") + "]")
+        jsonstr.append("\"m" + i+ "\":[" + gMotifInfo(i).mkString(",") + "]")
       else
-              jsonstr.append("\"m\"" + i+ ":[" + gMotifInfo(i).mkString(",") + "],")
+        jsonstr.append("\"m" + i+ "\":[" + gMotifInfo(i).mkString(",") + "],")
     }
     return jsonstr.toString()
   }
@@ -1104,7 +1104,7 @@ object STM_NodeArrivalRateMultiType {
     val local_motif_info = reuse_node_info.values.toList
     gMotifAllProb_IndividualFWr.println("sim_e", local_motif_info)
     gMotifInfo += local_motif_info
-    println(gMotifInfo)
+    myprintln(gMotifInfo.toString())
 
     write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
 
