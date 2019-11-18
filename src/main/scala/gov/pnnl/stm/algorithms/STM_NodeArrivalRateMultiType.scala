@@ -657,9 +657,8 @@ object STM_NodeArrivalRateMultiType {
 
   }
 
-  def jsonString(gMotifInfo: ListBuffer[List[eType]]): String = {
-    return "{" +
-            "\"m0\":[" + gMotifInfo.slice(0,3).mkString(",") + "]," +
+  def jsonStringFlattten(gMotifInfo: ListBuffer[eType]): String = {
+    return "" +  "\"m0\":[" + gMotifInfo.slice(0,3).mkString(",") + "]," +
              "\"m1\":[" + gMotifInfo.slice(3,4).mkString(",") + "],"+
              "\"m2\":[" + gMotifInfo.slice(4,5).mkString(",") + "]," +
              "\"m3\":[" + gMotifInfo.slice(5,6).mkString(",") + "],"+
@@ -675,8 +674,20 @@ object STM_NodeArrivalRateMultiType {
              "\"m13\":[" + gMotifInfo.slice(42,46).mkString(",") + "],"+
              "\"m14\":[" + gMotifInfo.slice(46,50).mkString(",") + "],"+
              "\"m15\":[" + gMotifInfo.slice(50,52).mkString(",") + "]"
-            "}"
 
+
+  }
+  def jsonString(gMotifInfo: ListBuffer[List[eType]]): String = {
+
+    var jsonstr :StringBuilder = new StringBuilder("")
+    for(i <- 0 until gMotifInfo.length)
+    {
+      if(i == gMotifInfo.length)
+        jsonstr.append("\"m\"" + i+ ":[" + gMotifInfo(i).mkString(",") + "]")
+      else
+              jsonstr.append("\"m\"" + i+ ":[" + gMotifInfo(i).mkString(",") + "],")
+    }
+    return jsonstr.toString()
   }
 
   def complete_STM(
@@ -723,7 +734,8 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Write current GMotifInfo to the "All" file
      */
-    gMotifAllProbFWr.println(1 + "," + 1 + "," + jsonString(gMotifInfo))
+    gMotifAllProbFWr.println("{ \"itr\":" + 1 + ",\"w\":" + 1 + "," + jsonString(gMotifInfo) +
+                             "}")
     gMotifAllProbFWr.flush()
     gOffsetAllFWriter.println(
       1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
@@ -886,7 +898,7 @@ object STM_NodeArrivalRateMultiType {
             /*
              * Write current GMotifInfo to the "All" file
              */
-            gMotifAllProbFWr.println(1 + "," + 1 + "," + jsonString(gMotifInfo))
+            gMotifAllProbFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonString(gMotifInfo) + "}")
             //gMotifAllProbFWr.println(
               //itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
             //)
