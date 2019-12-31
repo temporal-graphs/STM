@@ -1541,7 +1541,6 @@ object STM_NodeArrivalRateMultiType {
               break
 
             write_motif_vertex_association_file(validMotifsArray, motifName)
-
             tmpG = get_new_graph_except_processed_motifs_edges(
               tmpG,
               validMotifsArray
