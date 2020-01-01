@@ -135,7 +135,7 @@ object STM_NodeArrivalRateMultiType {
                                             new FileWriter(gWindowSizeFile, true)
                                           )
 
-  val gDebug = false
+  val gDebug = true
   val gHigherGOut = true
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
@@ -198,9 +198,9 @@ object STM_NodeArrivalRateMultiType {
     val t_start = System.nanoTime()
     lazy val sparkConf = new SparkConf()
       .registerKryoClasses(Array.empty)
-      .set("spark.default.parallelism","4")
+      .set("spark.default.parallelism","20")
       //.set("spark.driver.cores", "14")
-    .set("spark.sql.shuffle.partitions","6")
+    .set("spark.sql.shuffle.partitions","20")
     .set("spark.kryoserializer.buffer.max","2000m")
     lazy val sparkSession = SparkSession
       .builder()
@@ -211,8 +211,7 @@ object STM_NodeArrivalRateMultiType {
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
-    sparkSession.set("spark.sql.shuffle.partitions","4")
-    sparkSession.set("spark.default.parallelism","4")
+    sparkSession.set("spark.sql.shuffle.partitions","20")
 
     val sc = sparkSession.sparkContext
     val sqlc = sparkSession.sqlContext
@@ -1507,6 +1506,7 @@ object STM_NodeArrivalRateMultiType {
               println("graph triad sizev ", g.vertices.count)
               println("graph size e", g.edges.count)
             }
+            myprintln("finding moding " + motifName)
             val validMotifsArray: RDD[(Int, Int, Int, Long)] =
               if (motifName.equalsIgnoreCase("outstar")
                   || motifName.equalsIgnoreCase("instar"))
