@@ -196,26 +196,6 @@ object STM_NodeArrivalRateMultiType {
      * because spark could not initialize multiple spark context for the singleton object
      */
     val t_start = System.nanoTime()
-    lazy val sparkConf = new SparkConf()
-      .registerKryoClasses(Array.empty)
-      .set("spark.default.parallelism","20")
-      //.set("spark.driver.cores", "14")
-    .set("spark.sql.shuffle.partitions","20")
-    .set("spark.kryoserializer.buffer.max","2000m")
-    lazy val sparkSession = SparkSession
-      .builder()
-      .appName("STM")
-      .config(sparkConf)
-      .getOrCreate()
-
-    Logger.getLogger("org").setLevel(Level.OFF)
-    Logger.getLogger("akka").setLevel(Level.OFF)
-
-    sparkSession.set("spark.sql.shuffle.partitions","20")
-
-    val sc = sparkSession.sparkContext
-    val sqlc = sparkSession.sqlContext
-
 
     /*
      * Program specific configuration
@@ -238,6 +218,28 @@ object STM_NodeArrivalRateMultiType {
 
     val output_base_dir = clo.getOrElse("-base_out_dir", "./output/testout/")
 
+    val max_cores = clo.getOrElse("-max_cores", "200")
+
+    lazy val sparkConf = new SparkConf()
+      .registerKryoClasses(Array.empty)
+      .set("spark.default.parallelism",max_cores)
+      .set("spark.sql.shuffle.partitions",max_cores)
+      .set("spark.kryoserializer.buffer.max","2000m")
+    lazy val sparkSession = SparkSession
+      .builder()
+      .appName("STM")
+      .config(sparkConf)
+      .getOrCreate()
+
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)
+
+    sparkSession.set("spark.sql.shuffle.partitions",max_cores)
+
+    val sc = sparkSession.sparkContext
+    val sqlc = sparkSession.sqlContext
+
+
     myprintln("input paramters are :" + clo.toString)
     myprintln("Spark paramters are " + sc.getConf.getAll.foreach(println))
 
@@ -254,11 +256,8 @@ object STM_NodeArrivalRateMultiType {
     nodemapFile.flush()
 
     val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
-    //println("emtpy varchar", inputtag_varchartmp.count())
     val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )) .cache()
-    //println("non emtpy varchar", inputtag_varchar.count())
     inputtag_varchartmp.unpersist(true)
-    //System.exit(-1)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     myprintln("filterset arr input "+ filterarr.toList)
 
@@ -2236,7 +2235,7 @@ object STM_NodeArrivalRateMultiType {
   ): (Map[Int, Int], ArrayBuffer[Long], GraphFrame) = {
     val outheader = Array("id", "outDegree")
     val inheader = Array("id", "inDegree")
-    val k = 10
+    val k = 200
     import org.apache.spark.sql.functions._
     val topKOut: Array[Row] =
       if (motifName.equalsIgnoreCase("outstar"))
