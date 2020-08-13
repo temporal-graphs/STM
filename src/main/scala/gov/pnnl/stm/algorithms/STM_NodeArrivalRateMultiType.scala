@@ -219,12 +219,15 @@ object STM_NodeArrivalRateMultiType {
     val output_base_dir = clo.getOrElse("-base_out_dir", "./output/testout/")
 
     val max_cores = clo.getOrElse("-max_cores", "200")
-
+    println("max core is ", max_cores)
     lazy val sparkConf = new SparkConf()
       .registerKryoClasses(Array.empty)
       .set("spark.default.parallelism",max_cores)
       .set("spark.sql.shuffle.partitions",max_cores)
       .set("spark.kryoserializer.buffer.max","2000m")
+      .set("spark.sql.broadcastTimeout","10000000")
+      .set("spark.network.timeout","10000000")
+      .set("spark.driver.maxResultSize","30g").set("spark.local.dir","D:\\tmp\\")
     lazy val sparkSession = SparkSession
       .builder()
       .appName("STM")
@@ -234,7 +237,6 @@ object STM_NodeArrivalRateMultiType {
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
 
-    sparkSession.set("spark.sql.shuffle.partitions",max_cores)
 
     val sc = sparkSession.sparkContext
     val sqlc = sparkSession.sqlContext
@@ -351,8 +353,12 @@ object STM_NodeArrivalRateMultiType {
     else
       Long.MaxValue
 
+    val k_top = clo.getOrElse("-k_top", "4").toInt
+
     val gETypes =
       clo.getOrElse("-valid_etypes", "0").split(",").map(et => et.toInt)
+
+    val max_cores = clo.getOrElse("-max_cores", "200").toInt
 
     val inputSimpleTAG = baseTAG.get_simple_tagrdd
     /*
@@ -360,7 +366,7 @@ object STM_NodeArrivalRateMultiType {
      * local Map
      */
     val vAppearanceTime: RDD[(Int, Long)] =
-      this.get_vertex_birth_time(inputSimpleTAG).cache()
+      this.get_vertex_birth_time(inputSimpleTAG,max_cores ).cache()
     val vAppearanceTimeMap: scala.collection.mutable.Map[Int, Long] =
       scala.collection.mutable.Map(vAppearanceTime.collect(): _*)
 
@@ -385,11 +391,13 @@ object STM_NodeArrivalRateMultiType {
         gETypes,
         inputSimpleTAG,
         tDelta,
-        filterNodeIDs
+        filterNodeIDs,
+        k_top,
+        max_cores
       )
       (res._1, res._2, avg_out_deg)
     } else {
-      val res = complete_STM(gDebug, gETypes, inputSimpleTAG,filterNodeIDs)
+      val res = complete_STM(gDebug, gETypes, inputSimpleTAG,filterNodeIDs,k_top,max_cores)
       (res._1, res._2, avg_out_deg)
     }
 
@@ -497,7 +505,7 @@ object STM_NodeArrivalRateMultiType {
 
   def findQuad(g: GraphFrame,
                motifName: String,
-               gETypes: Array[eType], tDelta: Long,filterNodeIDs:Array[vertexId]): GraphFrame = {
+               gETypes: Array[eType], tDelta: Long,filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
     
     
@@ -527,7 +535,8 @@ object STM_NodeArrivalRateMultiType {
                     3,
                     4,
                     tDelta,
-                    filterNodeIDs
+                    filterNodeIDs,
+                    max_cores
                   )
                 else
                   find4EdgNVtxMotifs(
@@ -541,7 +550,8 @@ object STM_NodeArrivalRateMultiType {
                     4,
                     4,
                     tDelta,
-                    filterNodeIDs
+                    filterNodeIDs,
+                    max_cores
                   )
 
               //TODO: look at the need of this check and the return type
@@ -586,7 +596,7 @@ object STM_NodeArrivalRateMultiType {
   def findAllITeM(gETypes: Array[eType],
                   call_id_val: Int,
                   initial_tag: SimpleTAGRDD,
-    dDelta: Long,filterNodeIDs:Array[vertexId]): GraphFrame = {
+    dDelta: Long,filterNodeIDs:Array[vertexId],k_top:Int,max_cores:Int): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
 
 
@@ -606,7 +616,7 @@ object STM_NodeArrivalRateMultiType {
      * we filter for edge type >= 0 because we use -1 edge type for isolated vertex
      * 1000 -1 1000 0 means 1000 is an isolated node
      */
-    val multi_edges_TAG = findSimultaniousMultiEdges(initial_tag,filterNodeIDs).cache()
+    val multi_edges_TAG = findSimultaniousMultiEdges(initial_tag,filterNodeIDs,max_cores ).cache()
 
     /*
      * Once simulatanious multi-edges are removed from the TAG, create GraphFrame
@@ -633,18 +643,18 @@ object STM_NodeArrivalRateMultiType {
     // is used by the code so there is 1 more isolated nodes than requried.
     g = findIsolatedVtx(g, "isolatednode", gETypes,filterNodeIDs)
     g = findIsolatedEdg(g, "isolatededge", gETypes,filterNodeIDs)
-    g = findNonSimMultiEdg(g, "multiedge", gETypes,filterNodeIDs)
+    g = findNonSimMultiEdg(g, "multiedge", gETypes,filterNodeIDs,max_cores)
     g = findSelfLoop(g, "selfloop", gETypes,filterNodeIDs)
-    g = findTriad(g, "triangle", SYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
-    g = findTriad(g, "triad", ASYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
-    g = findQuad(g, "twoloop", gETypes,dDelta,filterNodeIDs).cache()
-    g = findQuad(g, "quad", gETypes,dDelta,filterNodeIDs)
-    g = findDyad(g, "loop", SYMMETRY, gETypes, 2, 2,dDelta,filterNodeIDs).cache()
-    g = findTriad(g, "outstar", SYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
-    g = findTriad(g, "instar", SYMMETRY, gETypes,dDelta,filterNodeIDs).cache()
-    g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs).cache()
-    g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs).cache()
-    g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs).cache()
+    g = findTriad(g, "triangle", SYMMETRY, gETypes,dDelta,filterNodeIDs,k_top,max_cores).cache()
+    g = findTriad(g, "triad", ASYMMETRY, gETypes,dDelta,filterNodeIDs,k_top,max_cores).cache()
+    g = findQuad(g, "twoloop", gETypes,dDelta,filterNodeIDs,max_cores).cache()
+    g = findQuad(g, "quad", gETypes,dDelta,filterNodeIDs,max_cores)
+    g = findDyad(g, "loop", SYMMETRY, gETypes, 2, 2,dDelta,filterNodeIDs,max_cores).cache()
+    g = findTriad(g, "outstar", SYMMETRY, gETypes,dDelta,filterNodeIDs,k_top,max_cores).cache()
+    g = findTriad(g, "instar", SYMMETRY, gETypes,dDelta,filterNodeIDs,k_top,max_cores).cache()
+    g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs,max_cores).cache()
+    g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs,max_cores).cache()
+    g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs,max_cores).cache()
     g = findResidualEdg(g, "residualedge", gETypes,filterNodeIDs).cache()
 
     if (gDebug) {
@@ -691,7 +701,7 @@ object STM_NodeArrivalRateMultiType {
   def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
-      initial_simple_tag: SimpleTAGRDD,filterNodeIDs:Array[vertexId]
+      initial_simple_tag: SimpleTAGRDD,filterNodeIDs:Array[vertexId],k_top:Int,max_cores:Int
   ): (ListBuffer[Double], ListBuffer[Long]) = {
     var call_id = -1
 
@@ -714,7 +724,7 @@ object STM_NodeArrivalRateMultiType {
     }
 
     try {
-      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs)
+      val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs,k_top,max_cores)
       if (gDebug) {
         println(gMotifInfo.toList)
         println("number of edges in last graph", g.edges.count)
@@ -791,7 +801,9 @@ object STM_NodeArrivalRateMultiType {
       gETypes: Array[Int],
       initial_simple_tag: SimpleTAGRDD,
       tDelta:Long,
-      filterNodeIDs: Array[vertexId]
+      filterNodeIDs: Array[vertexId],
+      k_top:Int,
+      max_cores:Int
 
 
 
@@ -846,7 +858,7 @@ object STM_NodeArrivalRateMultiType {
       var gOffsetInfo_itr_local = ListBuffer.empty[Long]
       var num_w_in_sampling = 0
 
-      for (i <- 0 to num_windows - 1) {
+      for (i <- 0 to num_windows - 4) {
         currWinID = i
         val t0 = System.nanoTime()
         val rn = scala.util.Random
@@ -883,7 +895,7 @@ object STM_NodeArrivalRateMultiType {
             )
             var call_id = 0
             try {
-              findAllITeM(gETypes, call_id, local_tag,tDelta,filterNodeIDs)
+              findAllITeM(gETypes, call_id, local_tag,tDelta,filterNodeIDs,k_top,max_cores)
             } catch {
               case e: Exception => {
                 myprintln("\nERROR: Call id = " + call_id)
@@ -1002,18 +1014,18 @@ object STM_NodeArrivalRateMultiType {
     (gMotifInfo_global, gOffsetInfo_global)
   }
 
-  def findSimultaniousMultiEdges(inputSimpleTAG: SimpleTAGRDD,filterNodeIDs:Array[vertexId]): SimpleTAGRDD = {
+  def findSimultaniousMultiEdges(inputSimpleTAG: SimpleTAGRDD,filterNodeIDs:Array[vertexId],max_cores:Int): SimpleTAGRDD = {
 
     val sim_e_base = if(filterNodeIDs.length > 0){ inputSimpleTAG.filter(e
       => filterNodeIDs.contains(e._1) && filterNodeIDs.contains(e._3))}
     else
      { inputSimpleTAG }
     val sim_e = sim_e_base.map(e => (e, 1))
-        .reduceByKey((c1, c2) => c1 + c2)
+        .reduceByKey((c1, c2) => c1 + c2,max_cores)
         .filter(e => e._2 > 1)
         .cache()
 
-    val sim_e_vpairs = sim_e.flatMap(e => Iterator(e._1._1, e._1._3)).distinct()
+    val sim_e_vpairs = sim_e.flatMap(e => Iterator(e._1._1, e._1._3)).distinct(max_cores)
     val sim_e_num_v = sim_e_vpairs.count()
     val sim_e_max_num_v = (sim_e.values.sum() * 2).toLong
     /*
@@ -1109,7 +1121,7 @@ object STM_NodeArrivalRateMultiType {
     // This is always 1.
     write_motif_independence(1,1)
     write_motif_vertex_association_file(sim_e.keys, "simulatanious")
-    inputSimpleTAG.distinct()
+    inputSimpleTAG.distinct(max_cores)
   }
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
@@ -1122,7 +1134,7 @@ object STM_NodeArrivalRateMultiType {
     */
   def get_vertex_birth_time(
       nodeQuadruples: RDD[(vertexId, eType, vertexId, eTime)]
-  ): RDD[(Int, Long)] = {
+  ,max_cores:Int): RDD[(Int, Long)] = {
 
     /*
      * compute first appearance time of each vertex.
@@ -1130,13 +1142,13 @@ object STM_NodeArrivalRateMultiType {
      */
     nodeQuadruples
       .flatMap(nd => Iterator((nd._1.toInt, nd._4), (nd._3.toInt, nd._4)))
-      .reduceByKey((time1, time2) => Math.min(time1, time2))
+      .reduceByKey((time1, time2) => Math.min(time1, time2),max_cores)
   }
 
   def findNonSimMultiEdg(g_base: GraphFrame,
                          motifName: String,
                          gETypes: Array[Int],
-                         filterNodeIDs:Array[vertexId]): GraphFrame = {
+                         filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
 
     val g = if(filterNodeIDs.length > 0 ) g_base.filterEdges( col("src").isin(filterNodeIDs: _*) &&
@@ -1213,7 +1225,7 @@ object STM_NodeArrivalRateMultiType {
          * edge with lowest timestamp We create a set of edges for a given source-dst pair a
          * nd at the same time compute the smallest edge.  The first element i.e. the set gives
          * us the count of multi-edges and the 2nd element gives us the edges to keep.  Total
-         * multi-edges are the sum of all 1st elements. We do -1 becuause for every edge set, there
+         * multi-edges are the sum of all 1st elements. We do -1 because for every edge set, there
          * is always 1 "edge to keep" and rest are the "multi edges"
          * For testGDifficult :
          * (3,(21,1,22,1001))
@@ -1226,6 +1238,7 @@ object STM_NodeArrivalRateMultiType {
          * multi_edges_info is src_dst_key, set of all mutli edges, minimum edge (representative
          * to keep)
          */
+
         val multi_edges_info: RDD[
           ((Int, Int), (Set[(Int, Int, Int, Long)], (Int, Int, Int, Long)))
         ] =
@@ -1255,7 +1268,7 @@ object STM_NodeArrivalRateMultiType {
             .reduceByKey((edge1, edge2) => {
               if (edge1._2._4 <= edge2._2._4) (edge1._1 ++ edge2._1, edge1._2)
               else (edge1._1 ++ edge2._1, edge2._2)
-            })
+            },max_cores)
             .cache()
 
         // unpersist validMotifs as it takes hume amount for some graphs Ex: wiki_talk
@@ -1298,7 +1311,7 @@ object STM_NodeArrivalRateMultiType {
           .flatMap(me => {
             Iterable(me._1, me._3)
           })
-          .distinct()
+          .distinct(max_cores)
           .collect()
         val multi_edge_node_file = new PrintWriter(
           new File(
@@ -1315,14 +1328,14 @@ object STM_NodeArrivalRateMultiType {
         val max_possible_multi_edge_nodes = 2 * multi_edges_to_remove.count()
         write_vertex_independence(multi_edge_nodes_cnt,max_possible_multi_edge_nodes)
 
-        //motif independence is always 1 here if it exists
+        //motif independence is always 1 here if it exists : TODO: Remove this line after some review
         write_motif_independence(8,8)
 
         myprintln("total multi edges are : " +total_multi_edges)
         myprintln("avg avg_offset_time is " + eMean)
         val multi_edges_df = sqlc.createDataFrame(multi_edges_to_remove)
 
-        // For reuse_node_info: For every motif, both the nodes are reused for the 2nd edge
+        // For reuse/-max_cores_node_info: For every motif, both the nodes are reused for the 2nd edge
         // So the resuling map it (2-> number of multi edges)
         val reuse_node_info: Map[Int, Int] = Map(2 -> total_multi_edges)
         gMotifAllProb_IndividualFWr.println(
@@ -1330,6 +1343,8 @@ object STM_NodeArrivalRateMultiType {
           reuse_node_info.values.toList
         )
         gMotifInfo += reuse_node_info.values.toList
+
+        //TODO: Motif association for Non-Simu Multi-edges
 
         // Get time offset information
         /*
@@ -1487,12 +1502,13 @@ object STM_NodeArrivalRateMultiType {
         gMotifNameToKey(motifName) + "," +
         allV.mkString(",")
     )
+    gMotifVtxAssoFWr.flush()
   }
 
   def findTriad(g: GraphFrame,
                 motifName: String,
                 symmetry: Boolean = false,
-                gETypes: Array[Int],tDelta: Long, filterNodeIDs:Array[vertexId]): GraphFrame = {
+                gETypes: Array[Int],tDelta: Long, filterNodeIDs:Array[vertexId],k_top:Int,max_cores:Int): GraphFrame = {
 
 //    println("check if graph g e is chached " + g.edges.storageLevel.useMemory)
 
@@ -1506,7 +1522,7 @@ object STM_NodeArrivalRateMultiType {
               println("graph size e", g.edges.count)
             }
             myprintln("finding moding " + motifName)
-            val validMotifsArray: RDD[(Int, Int, Int, Long)] =
+              val res =
               if (motifName.equalsIgnoreCase("outstar")
                   || motifName.equalsIgnoreCase("instar"))
                 find3EdgNVtxMotifs(
@@ -1520,7 +1536,9 @@ object STM_NodeArrivalRateMultiType {
                   4,
                   3,
                   tDelta,
-                  filterNodeIDs
+                  filterNodeIDs,
+                  k_top,
+                  max_cores
                 )
               else
                 find3EdgNVtxMotifs(
@@ -1534,8 +1552,13 @@ object STM_NodeArrivalRateMultiType {
                   3,
                   3,
                   tDelta,
-                  filterNodeIDs
+                  filterNodeIDs,
+                  k_top,
+                  max_cores
                 )
+
+            val validMotifsArray: RDD[(Int, Int, Int, Long)] = res._2
+            tmpG = res._1
             if (validMotifsArray.isEmpty)
               break
 
@@ -1736,7 +1759,7 @@ object STM_NodeArrivalRateMultiType {
 
   def writeOrbitIndependence_VertexAssociation(true_mis_set_rdd: RDD[String],
                                                num_nonoverlapping_m: Long,
-                                               motifName: String): Unit = {
+                                               motifName: String,max_cores:Int): Unit = {
     /*
        "residualedge" -> "(a)-[e1]->(b)",: ALWAYS ONE SO DONT WRITE
        "selfloop" -> "(a)-[e1]->(b)",ALWAYS ONE SO DONT WRITE
@@ -1766,7 +1789,7 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
 
-      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y).collect
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
 
       /*
        * Write orbit_vertex_association file
@@ -1806,7 +1829,7 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
         .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y)
+        .reduceByKey((x, y) => x + y,max_cores)
         .collect()
         .toMap
       val orbit_independence = List(
@@ -1825,7 +1848,7 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
         .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y)
+        .reduceByKey((x, y) => x + y,max_cores)
         .collect()
         .toMap
       val orbit_independence = List(
@@ -1852,7 +1875,7 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
         .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y)
+        .reduceByKey((x, y) => x + y,max_cores)
         .collect()
         .toMap
       val orbit_independence = List(
@@ -1905,7 +1928,7 @@ object STM_NodeArrivalRateMultiType {
       num_motif_nodes: Int,
       num_motif_edges: Int,
       tDelta : Long,
-    filterNodeIDs:Array[vertexId]
+    filterNodeIDs:Array[vertexId],max_cores:Int
   ): RDD[(vertexId, vertexId, vertexId, eTime)] = {
 
     val spark = SparkSession.builder().getOrCreate()
@@ -2062,7 +2085,7 @@ object STM_NodeArrivalRateMultiType {
     writeOrbitIndependence_VertexAssociation(
       true_mis_set_rdd,
       num_nonoverlapping_m,
-      motifName
+      motifName,max_cores
     )
     val validMotifsArray: RDD[(Int, Int, Int, Long)] =
       get_edges_from_mis_motif(true_mis_set_rdd).cache()
@@ -2231,30 +2254,35 @@ object STM_NodeArrivalRateMultiType {
       num_motif_nodes: Int,
       num_motif_edges: Int,
       gSQLContext: SQLContext,
-      motifName: String
+      motifName: String,
+      k_top:Int
   ): (Map[Int, Int], ArrayBuffer[Long], GraphFrame) = {
     val outheader = Array("id", "outDegree")
     val inheader = Array("id", "inDegree")
-    val k = 200
+    val k = k_top
     import org.apache.spark.sql.functions._
+    val f = new PrintWriter(new File("sneakyGraph_beforetopK_edges.csv"))
+    tmpG.edges.collect.foreach(e=>f.println(get_row_src(e) + ","+get_row_etype(e)
+      + ","+get_row_dst(e) + ","  + get_row_time(e)))
+    f.flush()
     val topKOut: Array[Row] =
       if (motifName.equalsIgnoreCase("outstar"))
         tmpG.outDegrees
           .select(outheader.head, outheader.tail: _*)
           .orderBy(desc("outDegree"))
-          .limit(k)
+          .limit(20000)
           .rdd
           .collect()
       else
         tmpG.inDegrees
           .select(inheader.head, inheader.tail: _*)
           .orderBy(desc("inDegree"))
-          .limit(k)
+          .limit(20000)
           .rdd
           .collect()
 
     val topK_V = topKOut.map(row => (row.getAs[Int](0)))
-    myprintln("top k are "+ k+ topK_V.toList)
+    myprintln("top k are "+ k+ " " + topK_V.toList)
     val in_out_star_edges =
       if (motifName.equalsIgnoreCase("outstar"))
         tmpG.find("(a)-[e1]->(b)").filter(col("a.id").isin(topK_V: _*)) 
@@ -2299,7 +2327,7 @@ object STM_NodeArrivalRateMultiType {
             } else
               local_star_map(vid) = current_motif_edges += e
           })
-          myprintln(partId+ local_star_map.toString())
+          //myprintln(partId+ local_star_map.toString())
           local_high_star_motifs.toIterator
         })
          
@@ -2429,12 +2457,14 @@ object STM_NodeArrivalRateMultiType {
                          gETypes: Array[Int],
                          num_motif_nodes: Int,
                          num_motif_edges: Int,
-    tDelta : Long,filterNodeIDs: Array[vertexId]): RDD[(Int, Int, Int, Long)] = {
+    tDelta : Long,filterNodeIDs: Array[vertexId],k_top:Int,max_cores:Int):
+  (GraphFrame, RDD[(Int, Int, Int, Long)]) = {
+
     val spark = SparkSession.builder().getOrCreate()
-
-
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
+
+    var resultantGraph = tmpG
 
     var reuse_node_info_star = Map[Int, Int]()
     for (i <- 0 to num_motif_nodes)
@@ -2472,11 +2502,19 @@ object STM_NodeArrivalRateMultiType {
 
         myprintln("original graph e " + tmpG.edges.count())
         val res =
-          topKStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName)
+          topKStar(tmpG, num_motif_nodes, num_motif_edges, sqlc, motifName,k_top)
         reuse_node_info_star = res._1
         avg_reuse_temporal_offset_info_star = res._2
-        val newGraph = res._3.cache()
+        val newGraph = res._3
+        newGraph.cache()
+
         myprintln("Sneaky graph e "+ newGraph.edges.count())
+        val f = new PrintWriter(new File("sneakyGraph_edges.csv"))
+        newGraph.edges.collect.foreach(e=>f.println(get_row_src(e) + ","+get_row_etype(e)
+          + ","+get_row_dst(e) + "," + get_row_time(e)))
+        f.flush()
+
+        resultantGraph = newGraph
         filterNodeID_3E(
           base3EFind(newGraph, motifName, gETypes, et1, et2, et3)
             .filter("c != d")
@@ -2513,6 +2551,10 @@ object STM_NodeArrivalRateMultiType {
       "e3.dst",
       "e3.time"
     )
+    println("starting caching")
+    overlappingMotifs.repartition(max_cores)
+    overlappingMotifs.cache()
+    println("done caching. starting count")
 
     val num_overlap_motifs = overlappingMotifs.count()
     val selctedMotifEdges_local_nonoverlap =
@@ -2529,7 +2571,7 @@ object STM_NodeArrivalRateMultiType {
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
         write_vertex_independence(0,0)
         write_motif_independence(0,0)
-        return sc.emptyRDD
+        return (resultantGraph,sc.emptyRDD)
       }
     } catch {
       case e: Exception => {
@@ -2553,7 +2595,7 @@ object STM_NodeArrivalRateMultiType {
                   motifName.equalsIgnoreCase("outstar")) {
           gMotifOrbitInfo += List(Double.NaN,Double.NaN)
         }
-        return sc.emptyRDD
+        return (resultantGraph, sc.emptyRDD)
       }
     }
 
@@ -2586,7 +2628,7 @@ object STM_NodeArrivalRateMultiType {
     writeOrbitIndependence_VertexAssociation(
       true_mis_set_rdd,
       num_nonoverlap_motifs,
-      motifName
+      motifName,max_cores
     )
 
     val validMotifsArray: RDD[(Int, Int, Int, Long)] =
@@ -2640,7 +2682,9 @@ object STM_NodeArrivalRateMultiType {
       .map { case (x, y) => x + y }
 
     myprintln("edge offset at triad"+ gOffsetInfo)
-    validMotifsArray
+
+
+    (resultantGraph, validMotifsArray)
   }
 
   def get_local_NO_motifs(overlappingMotifs: Dataset[Row],
@@ -2728,7 +2772,7 @@ object STM_NodeArrivalRateMultiType {
                          gETypes: Array[Int],
                          num_motif_nodes: Int,
                          num_motif_edges: Int,
-                         tDelta : Long, filterNodeIDs:Array[vertexId]): RDD[(Int, Int, Int, Long)] = {
+                         tDelta : Long, filterNodeIDs:Array[vertexId],max_cores:Int): RDD[(Int, Int, Int, Long)] = {
     myprintln(" Staring 2e3v motif nV, vE"+ num_motif_nodes+ num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
     
@@ -2837,7 +2881,7 @@ object STM_NodeArrivalRateMultiType {
     writeOrbitIndependence_VertexAssociation(
       true_mis_set_rdd,
       num_nonoverlapping_m,
-      motifName
+      motifName,max_cores
     )
 
     val validMotifsArray: RDD[(Int, Int, Int, Long)] = get_edges_from_mis_motif(
@@ -2887,7 +2931,7 @@ object STM_NodeArrivalRateMultiType {
                gETypes: Array[Int],
                num_motif_nodes: Int,
                num_motif_edges: Int,
-    tDelta: Long,filterNodeIDs:Array[vertexId]): GraphFrame = {
+    tDelta: Long,filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
     var tmpG = g
     for (et1 <- gETypes.indices) {
       for (et2 <- gETypes.indices) {
@@ -2910,7 +2954,7 @@ object STM_NodeArrivalRateMultiType {
           gETypes,
           num_motif_nodes,
           num_motif_edges,
-          tDelta,filterNodeIDs
+          tDelta,filterNodeIDs,max_cores
 
         ).cache()
         write_motif_vertex_association_file(validMotifsArray, motifName)
@@ -3143,8 +3187,8 @@ object STM_NodeArrivalRateMultiType {
                                non_overlapping_cnt: Long): Unit = {
     // write motif uniqueness file
     gMotifIndFWr.println(
-      overlapping_cnt + "," +
         non_overlapping_cnt + "," +
+        overlapping_cnt + "," +
         non_overlapping_cnt.toDouble / overlapping_cnt.toDouble
     )
     gMotifIndFWr.flush()
