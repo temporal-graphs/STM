@@ -24,7 +24,7 @@
     </pluginRepositories>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/org.scalaz/scalaz-core -->
+        <!--  https://mvnrepository.com/artifact/org.scalaz/scalaz-core -->
         <dependency>
             <groupId>org.scalaz</groupId>
             <artifactId>scalaz-core_2.11</artifactId>
