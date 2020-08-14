@@ -698,7 +698,19 @@ object STM_NodeArrivalRateMultiType {
     return jsonstr.toString()
   }
 
-  def complete_STM(
+  def jsonStringLong(gOffsetInfo: ListBuffer[List[Long]]): String = {
+
+    var jsonstr: StringBuilder = new StringBuilder("")
+    for (i <- 0 until gMotifInfo.length) {
+      if (i == gMotifInfo.length - 1)
+        jsonstr.append("\"m" + i + "\":[" + gMotifInfo(i).mkString(",") + "]")
+      else
+        jsonstr.append("\"m" + i + "\":[" + gMotifInfo(i).mkString(",") + "],")
+    }
+    return jsonstr.toString()
+  }
+
+    def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
       initial_simple_tag: SimpleTAGRDD,filterNodeIDs:Array[vertexId],k_top:Int,max_cores:Int
@@ -745,9 +757,10 @@ object STM_NodeArrivalRateMultiType {
     gMotifAllProbFWr.println("{ \"itr\":" + 1 + ",\"w\":" + 1 + "," + jsonString(gMotifInfo) +
                              "}")
     gMotifAllProbFWr.flush()
-    gOffsetAllFWriter.println(
-      1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
-    )
+    gOffsetAllFWriter.println("{ \"itr\":" +  1 + ",\"w\":" + 1 + "," + jsonStringLong(gOffsetInfo) + "}")
+    //gOffsetAllFWriter.println(
+      //1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
+    //)
     gMotifOrbitFWr.println(
       1 + "," + 1 + "," + gMotifOrbitInfo.flatten.mkString(",")
     )
@@ -913,9 +926,10 @@ object STM_NodeArrivalRateMultiType {
               //itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
             //)
             gMotifAllProbFWr.flush()
-            gOffsetAllFWriter.println(
-              itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
-            )
+            gOffsetAllFWriter.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringLong(gOffsetInfo) + "}")
+            //gOffsetAllFWriter.println(
+              //itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
+            //)
             gOffsetAllFWriter.flush()
 
             gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
@@ -2979,7 +2993,7 @@ object STM_NodeArrivalRateMultiType {
             )
           )
           .distinct
-          .toDF("id", "name") 
+          .toDF("id", "name")
         import sqlc.implicits._
         val newGraph = GraphFrame(newVRDD, newEDF)
         tmpG = newGraph
