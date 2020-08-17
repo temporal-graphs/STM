@@ -685,31 +685,41 @@ object STM_NodeArrivalRateMultiType {
 
 
   }
-  def jsonString(gMotifInfo: ListBuffer[List[eType]]): String = {
+  def jsonString(gMotifInfo: ListBuffer[List[eType]],key :String= "m"): String = {
 
     var jsonstr :StringBuilder = new StringBuilder("")
     for(i <- 0 until gMotifInfo.length)
     {
       if(i == gMotifInfo.length - 1 )
-        jsonstr.append("\"m" + i+ "\":[" + gMotifInfo(i).mkString(",") + "]")
+        jsonstr.append("\""+ key + i+ "\":[" + gMotifInfo(i).mkString(",") + "]")
       else
-        jsonstr.append("\"m" + i+ "\":[" + gMotifInfo(i).mkString(",") + "],")
+        jsonstr.append("\""+key + i+ "\":[" + gMotifInfo(i).mkString(",") + "],")
     }
     return jsonstr.toString()
   }
 
-  def jsonStringLong(gOffsetInfo: ListBuffer[List[Long]]): String = {
+  def jsonStringLong(gOffsetInfo: ListBuffer[List[Long]],key:String="m"): String = {
 
     var jsonstr: StringBuilder = new StringBuilder("")
-    for (i <- 0 until gMotifInfo.length) {
-      if (i == gMotifInfo.length - 1)
-        jsonstr.append("\"m" + i + "\":[" + gMotifInfo(i).mkString(",") + "]")
+    for (i <- 0 until gOffsetInfo.length) {
+      if (i == gOffsetInfo.length - 1)
+        jsonstr.append("\""+key+ i + "\":[" + gOffsetInfo(i).mkString(",") + "]")
       else
-        jsonstr.append("\"m" + i + "\":[" + gMotifInfo(i).mkString(",") + "],")
+        jsonstr.append("\""+key + i + "\":[" + gOffsetInfo(i).mkString(",") + "],")
     }
     return jsonstr.toString()
   }
+  def jsonStringDouble(gMotifOrbitIndInfo: ListBuffer[List[Double]],key:String="m"): String = {
 
+    var jsonstr: StringBuilder = new StringBuilder("")
+    for (i <- 0 until gMotifOrbitIndInfo.length) {
+      if (i == gMotifOrbitIndInfo.length - 1)
+        jsonstr.append("\""+key+ i + "\":[" + gMotifOrbitIndInfo(i).mkString(",") + "]")
+      else
+        jsonstr.append("\""+key + i + "\":[" + gMotifOrbitIndInfo(i).mkString(",") + "],")
+    }
+    return jsonstr.toString()
+  }
     def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
@@ -926,13 +936,14 @@ object STM_NodeArrivalRateMultiType {
               //itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
             //)
             gMotifAllProbFWr.flush()
-            gOffsetAllFWriter.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringLong(gOffsetInfo) + "}")
+            gOffsetAllFWriter.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringLong(gOffsetInfo,"off") + "}")
             //gOffsetAllFWriter.println(
               //itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
             //)
             gOffsetAllFWriter.flush()
 
-            gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
+            //gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
+            gMotifOrbitAllFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gMotifOrbitInfo,"orb") + "}")
             gMotifOrbitAllFWr.flush()
 
             // gMotifInfo gOffsetInfo has counts for local graph
@@ -2585,6 +2596,15 @@ object STM_NodeArrivalRateMultiType {
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
         write_vertex_independence(0,0)
         write_motif_independence(0,0)
+        if (motifName.equalsIgnoreCase("triangle")
+        ) {
+          gMotifOrbitInfo += List(Double.NaN)
+        }else if (motifName.equalsIgnoreCase("triad")) {
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN,Double.NaN)
+        }else if (motifName.equalsIgnoreCase("instar") ||
+          motifName.equalsIgnoreCase("outstar")) {
+          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+        }
         return (resultantGraph,sc.emptyRDD)
       }
     } catch {
