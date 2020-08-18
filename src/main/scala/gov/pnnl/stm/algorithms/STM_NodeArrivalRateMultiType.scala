@@ -63,13 +63,13 @@ object STM_NodeArrivalRateMultiType {
   val gMotifOrbitFile = new File(
     t1 + "_MotifOrbit_Independence_" + prefix_annotation + ".txt"
   )
-  val gMotifOrbitFWr = new PrintWriter(gMotifOrbitFile)
+  val gMotifOrbit_Ind_FWr = new PrintWriter(gMotifOrbitFile)
 
   val gMotifOrbitFileAll = new File(
     t1 + "_MotifOrbit_Independence_AbsCount" + prefix_annotation +
       ".txt"
   )
-  val gMotifOrbitAllFWr = new PrintWriter(gMotifOrbitFileAll)
+  val gMotifOrbitAll_IndAbsCnt_FWr = new PrintWriter(gMotifOrbitFileAll)
 
   val gMotifAllProbFile_Individual = new File(
     t1 + "_MotifProb_AbsCount_Individual" +
@@ -480,7 +480,7 @@ object STM_NodeArrivalRateMultiType {
       .filter(
         col("a.id").isin(v_deg_1_exc_local: _*)
           && col("b.id").isin(v_deg_1_exc_local: _*)
-      ) 
+      )
 
     val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
     val selctedMotifEdges =
@@ -507,8 +507,8 @@ object STM_NodeArrivalRateMultiType {
                motifName: String,
                gETypes: Array[eType], tDelta: Long,filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
-    
-    
+
+
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
     var tmpG = g
@@ -562,14 +562,14 @@ object STM_NodeArrivalRateMultiType {
 
               val uniqeEDF = sqlc
                 .createDataFrame(validMotifsArray)
-                .toDF("src", "type", "dst", "time") 
+                .toDF("src", "type", "dst", "time")
 
               /*
                * 			dataFrame's except methods returns distinct edges by default.
                *      I dont see the documentation saying this. I have fixed the graph reader code and do a "distinct" while
                *      creating the base RDD
                */
-              val newEDF = tmpG.edges.except(uniqeEDF) 
+              val newEDF = tmpG.edges.except(uniqeEDF)
               import sqlc.implicits._
               val newVRDD = newEDF
                 .flatMap(
@@ -580,7 +580,7 @@ object STM_NodeArrivalRateMultiType {
                   )
                 )
                 .distinct
-                .toDF("id", "name") 
+                .toDF("id", "name")
               val newGraph = GraphFrame(newVRDD, newEDF)
               tmpG.unpersist(true)
               tmpG = newGraph.cache()
@@ -627,7 +627,7 @@ object STM_NodeArrivalRateMultiType {
           ((gETypes.contains(edge._2))
             || (edge._2 == -1)) //"isolated v"
       )
-      .toDF("src", "type", "dst", "time") 
+      .toDF("src", "type", "dst", "time")
       .cache()
 
     // Create a GraphFrame
@@ -771,12 +771,12 @@ object STM_NodeArrivalRateMultiType {
     //gOffsetAllFWriter.println(
       //1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     //)
-    gMotifOrbitFWr.println(
+    gMotifOrbit_Ind_FWr.println(
       1 + "," + 1 + "," + gMotifOrbitInfo.flatten.mkString(",")
     )
     gOffsetAllFWriter.flush()
     gMotifAllProb_IndividualFWr.flush()
-    gMotifOrbitFWr.flush()
+    gMotifOrbit_Ind_FWr.flush()
 
     /*
      * Generate Output
@@ -943,8 +943,8 @@ object STM_NodeArrivalRateMultiType {
             gOffsetAllFWriter.flush()
 
             //gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
-            gMotifOrbitAllFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gMotifOrbitInfo,"orb") + "}")
-            gMotifOrbitAllFWr.flush()
+            gMotifOrbitAll_IndAbsCnt_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gMotifOrbitInfo,"orb") + "}")
+            gMotifOrbitAll_IndAbsCnt_FWr.flush()
 
             // gMotifInfo gOffsetInfo has counts for local graph
             if (gMotifInfo_itr_local.isEmpty) {
