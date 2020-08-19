@@ -48,7 +48,7 @@ object STM_NodeArrivalRateMultiType {
   val prefix_annotation = "kdd"
   val gGraphEmebdding = ListBuffer[Object]()
   val gMotifInfo = ListBuffer.empty[List[Int]]
-  val gMotifOrbitInfo = ListBuffer.empty[List[Double]]
+  val gMotifOrbit_Ind_Info = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
   val gMotifProbFile = new File(
@@ -772,7 +772,7 @@ object STM_NodeArrivalRateMultiType {
       //1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     //)
     gMotifOrbit_Ind_FWr.println(
-      1 + "," + 1 + "," + gMotifOrbitInfo.flatten.mkString(",")
+      1 + "," + 1 + "," + gMotifOrbit_Ind_Info.flatten.mkString(",")
     )
     gOffsetAllFWriter.flush()
     gMotifAllProb_IndividualFWr.flush()
@@ -943,7 +943,7 @@ object STM_NodeArrivalRateMultiType {
             gOffsetAllFWriter.flush()
 
             //gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
-            gMotifOrbitAll_IndAbsCnt_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gMotifOrbitInfo,"orb") + "}")
+            gMotifOrbitAll_IndAbsCnt_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gMotifOrbit_Ind_Info,"orb") + "}")
             gMotifOrbitAll_IndAbsCnt_FWr.flush()
 
             // gMotifInfo gOffsetInfo has counts for local graph
@@ -1200,7 +1200,7 @@ object STM_NodeArrivalRateMultiType {
           .filter("a != b")
           .filter("e1.type = " + gETypes(et1))
           .filter("e2.type = " + gETypes(et2))
-          .filter("e1.time < e2.time") 
+          .filter("e1.time < e2.time")
         val selectEdgeArr = Array(
           "e1.src",
           "e1.type",
@@ -1395,7 +1395,7 @@ object STM_NodeArrivalRateMultiType {
             )
           )
           .distinct
-          .toDF("id", "name") 
+          .toDF("id", "name")
         val newGraph = GraphFrame(newVRDD, newEDF)
         // unpersist old graph
         tmpG.unpersist(true)
@@ -1426,7 +1426,7 @@ object STM_NodeArrivalRateMultiType {
         tmpG
           .find(gAtomicMotifs(motifName))
           .filter("a == b")
-          .filter("e1.type = " + gETypes(et1)) 
+          .filter("e1.type = " + gETypes(et1))
       val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
       val selctedMotifEdges: DataFrame = overlappingMotifs
         .select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -1486,7 +1486,7 @@ object STM_NodeArrivalRateMultiType {
           )
         )
         .distinct
-        .toDF("id", "name") 
+        .toDF("id", "name")
       val newGraph = GraphFrame(newVRDD, newEDF)
       gMotifAllProb_IndividualFWr.println(
         "self loop",
@@ -1604,13 +1604,13 @@ object STM_NodeArrivalRateMultiType {
       validMotifsArray: RDD[(Int, Int, Int, Long)]
   ): GraphFrame = {
     val spark = SparkSession.builder().getOrCreate()
-    
-    
+
+
     val sqlc = spark.sqlContext
 
     val uniqeEDF = sqlc
       .createDataFrame(validMotifsArray)
-      .toDF("src", "type", "dst", "time") 
+      .toDF("src", "type", "dst", "time")
 
     /*
      * 			dataFrame's except methods returns distinct edges by default.
@@ -1628,7 +1628,7 @@ object STM_NodeArrivalRateMultiType {
         )
       )
       .distinct
-      .toDF("id", "name") 
+      .toDF("id", "name")
     val newGraph = GraphFrame(newVRDD, newEDF)
     tmpG.unpersist(true)
     newGraph.cache()
@@ -1786,11 +1786,24 @@ object STM_NodeArrivalRateMultiType {
                                                num_nonoverlapping_m: Long,
                                                motifName: String,max_cores:Int): Unit = {
     /*
+       "simultanious edge" -> : ALWAYS ONE SO DON'T WRITE
+       "non-sim multi edge" -> " ALWAYS ONE SON DONT WRITE
        "residualedge" -> "(a)-[e1]->(b)",: ALWAYS ONE SO DONT WRITE
        "selfloop" -> "(a)-[e1]->(b)",ALWAYS ONE SO DONT WRITE
        "multiedge" -> "(a)-[e1]->(b); (a)-[e2]->(b)",
        "isolatednode" -> "a", ALWAYS ONE SO DONT WRITE
        "isolatededge" -> "(a)-[e1]->(b)", ALWAYS (1,1) SO DONT WRITE
+
+
+       In output:
+       orb0:triable, 1:triad 2:twoloop 3:quad 4:loop 5:outstar 6:instar 7:outdiad
+       8:indiad 9:inoutdiad
+       "orb0":[NaN],"orb1":[NaN,NaN,NaN],"orb2":[NaN,NaN],"orb3":[NaN],
+       "orb4":[NaN,NaN], "orb5":[1.0,2.0],"orb6":[1.0,2.0]}
+
+       "orb0":[NaN],"orb1":[-8.3,NaN,NaN],"orb2":[-6.6,NaN],"orb3":[-5.5],
+       "orb4":[-2.5],"orb5":[-1.6,NaN],"orb6":[1.0,2.0],"orb7":[-3.5,NaN],
+       "orb8":[1.0,2.0],"orb9":[-4.5,NaN,NaN]}}
      */
     if (motifName.equalsIgnoreCase("triangle") ||
         motifName.equalsIgnoreCase("quad") ||
@@ -1800,7 +1813,7 @@ object STM_NodeArrivalRateMultiType {
         .map(edge => edge._1)
         .distinct()
         .count
-      gMotifOrbitInfo += List(numVOrbit.toDouble / num_nonoverlapping_m)
+      gMotifOrbit_Ind_Info += List(numVOrbit.toDouble / num_nonoverlapping_m)
     } else if (motifName.equalsIgnoreCase("triad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
       val orbit_vertex: RDD[(Int, Set[Int])] = motif_edges
@@ -1840,7 +1853,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(3, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbitInfo += orbit_independence
+      gMotifOrbit_Ind_Info += orbit_independence
     } else if (motifName.equalsIgnoreCase("outdiad") ||
                motifName.equalsIgnoreCase("indiad") ||
                motifName.equalsIgnoreCase("twoloop")) {
@@ -1861,7 +1874,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbitInfo += orbit_independence
+      gMotifOrbit_Ind_Info += orbit_independence
     } else if (motifName.equalsIgnoreCase("inoutdiad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
       val orbit_count: Map[Int, Int] = motif_edges
@@ -1881,7 +1894,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(3, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbitInfo += orbit_independence
+      gMotifOrbit_Ind_Info += orbit_independence
     } else if (motifName.equalsIgnoreCase("instar") ||
                motifName.equalsIgnoreCase("outstar")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
@@ -1907,7 +1920,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbitInfo += orbit_independence
+      gMotifOrbit_Ind_Info += orbit_independence
     }
   }
 
@@ -1957,8 +1970,8 @@ object STM_NodeArrivalRateMultiType {
   ): RDD[(vertexId, vertexId, vertexId, eTime)] = {
 
     val spark = SparkSession.builder().getOrCreate()
-    
-    
+
+
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -2058,9 +2071,9 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (
             motifName.equalsIgnoreCase("quad")){
-          gMotifOrbitInfo += List(Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("twoloop")) {
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
         }
         return sc.emptyRDD
       }
@@ -2310,8 +2323,8 @@ object STM_NodeArrivalRateMultiType {
     myprintln("top k are "+ k+ " " + topK_V.toList)
     val in_out_star_edges =
       if (motifName.equalsIgnoreCase("outstar"))
-        tmpG.find("(a)-[e1]->(b)").filter(col("a.id").isin(topK_V: _*)) 
-      else tmpG.find("(a)-[e1]->(b)").filter(col("b.id").isin(topK_V: _*)) 
+        tmpG.find("(a)-[e1]->(b)").filter(col("a.id").isin(topK_V: _*))
+      else tmpG.find("(a)-[e1]->(b)").filter(col("b.id").isin(topK_V: _*))
     val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
     val selctedMotifEdges =
       in_out_star_edges.select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -2355,7 +2368,7 @@ object STM_NodeArrivalRateMultiType {
           //myprintln(partId+ local_star_map.toString())
           local_high_star_motifs.toIterator
         })
-         
+
         .cache()
 
     // creating same datastruture to make it consistent with rest of the code
@@ -2598,12 +2611,12 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (motifName.equalsIgnoreCase("triangle")
         ) {
-          gMotifOrbitInfo += List(Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("triad")) {
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("instar") ||
           motifName.equalsIgnoreCase("outstar")) {
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
         }
         return (resultantGraph,sc.emptyRDD)
       }
@@ -2622,12 +2635,12 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (motifName.equalsIgnoreCase("triangle")
             ) {
-          gMotifOrbitInfo += List(Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("triad")) {
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("instar") ||
                   motifName.equalsIgnoreCase("outstar")) {
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
         }
         return (resultantGraph, sc.emptyRDD)
       }
@@ -2809,8 +2822,8 @@ object STM_NodeArrivalRateMultiType {
                          tDelta : Long, filterNodeIDs:Array[vertexId],max_cores:Int): RDD[(Int, Int, Int, Long)] = {
     myprintln(" Staring 2e3v motif nV, vE"+ num_motif_nodes+ num_motif_edges)
     val spark = SparkSession.builder().getOrCreate()
-    
-    
+
+
     val sc = spark.sparkContext
     val sqlc = spark.sqlContext
 
@@ -2857,6 +2870,16 @@ object STM_NodeArrivalRateMultiType {
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
         write_motif_independence(0,0)
+        if (
+          motifName.equalsIgnoreCase("loop")) {
+          gMotifOrbit_Ind_Info += List(Double.NaN)
+        }else if (motifName.equalsIgnoreCase("outdiad") ||
+          motifName.equalsIgnoreCase("indiad")
+        ){
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
+        }else if (motifName.equalsIgnoreCase("inoutdiad")) {
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
+        }
         return sc.emptyRDD
       }
     } catch {
@@ -2874,13 +2897,13 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (
             motifName.equalsIgnoreCase("loop")) {
-          gMotifOrbitInfo += List(Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("outdiad") ||
                   motifName.equalsIgnoreCase("indiad")
                       ){
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("inoutdiad")) {
-          gMotifOrbitInfo += List(Double.NaN,Double.NaN,Double.NaN)
+          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
         }
 
         return sc.emptyRDD
