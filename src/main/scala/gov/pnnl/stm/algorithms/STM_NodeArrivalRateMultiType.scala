@@ -48,28 +48,26 @@ object STM_NodeArrivalRateMultiType {
   val prefix_annotation = "kdd"
   val gGraphEmebdding = ListBuffer[Object]()
   val gMotifInfo = ListBuffer.empty[List[Int]]
-  val gMotifOrbit_Ind_Info = ListBuffer.empty[List[Double]]
+  val gOrbit_Ind = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
-  val gMotifProbFile = new File(
-    t1 + "_MotifProb_Rate_" + prefix_annotation + ".txt"
+  val gITeMRateFile = new File(
+    t1 + "_ITeM_Rate_" + prefix_annotation + ".txt"
   )
-  val gMotifProbFWr = new PrintWriter(gMotifProbFile)
-  val gMotifAllProbFile = new File(
-    t1 + "_MotifProb_AbsCount_" + prefix_annotation + ".txt"
+  val gITeMRateFWr = new PrintWriter(gITeMRateFile)
+  val gITeM_FreqFile = new File(
+    t1 + "_ITeM_Freq_" + prefix_annotation + ".txt"
   )
-  val gMotifAllProbFWr = new PrintWriter(gMotifAllProbFile)
-  gMotifAllProbFWr.println("[")
-  val gMotifOrbitFile = new File(
-    t1 + "_MotifOrbit_Independence_" + prefix_annotation + ".txt"
-  )
-  val gMotifOrbit_Ind_FWr = new PrintWriter(gMotifOrbitFile)
+  val gITeM_FreqFWr = new PrintWriter(gITeM_FreqFile)
+  gITeM_FreqFWr.println("[")
 
-  val gMotifOrbitFileAll = new File(
-    t1 + "_MotifOrbit_Independence_AbsCount" + prefix_annotation +
-      ".txt"
+  /*
+  * Orbit Independence for each oribit position
+   */
+  val gOrbitFile = new File(
+    t1 + "_Orbit_Independence_" + prefix_annotation + ".txt"
   )
-  val gMotifOrbitAll_IndAbsCnt_FWr = new PrintWriter(gMotifOrbitFileAll)
+  val gOrbit_Ind_FWr = new PrintWriter( gOrbitFile )
 
   val gMotifAllProbFile_Individual = new File(
     t1 + "_MotifProb_AbsCount_Individual" +
@@ -88,11 +86,11 @@ object STM_NodeArrivalRateMultiType {
     t1 + "_VertexBirth_" + prefix_annotation + ".txt"
   )
   val gVertexBirthFWriter = new PrintWriter(gVertexBirthFile)
-  val gMotifIndFile = new File(
-    t1 + "_Motif_Independence_" + prefix_annotation + ".txt"
+  val gITeM_IndFile = new File(
+    t1 + "_ITeM_Independence_" + prefix_annotation + ".txt"
   )
-  val gMotifIndFWr = new PrintWriter(
-    new FileWriter(gMotifIndFile, true)
+  val gITeM_IndFWr = new PrintWriter(
+    new FileWriter(gITeM_IndFile, true)
   )
   val gVtxIndFile = new File(
     t1 + "_Vertex_Independence_" + prefix_annotation + ".txt"
@@ -304,8 +302,8 @@ object STM_NodeArrivalRateMultiType {
     //                                 duration, v_size)
 
     //write average out degree file and motif count json file
-    gMotifAllProbFWr.println("]")
-    gMotifAllProbFWr.flush()
+    gITeM_FreqFWr.println("]")
+    gITeM_FreqFWr.flush()
     gMotifAllProb_IndividualFWr.flush()
     writeAvgOutDegFile(avg_outdeg_file, local_res._3)
 
@@ -764,19 +762,17 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Write current GMotifInfo to the "All" file
      */
-    gMotifAllProbFWr.println("{ \"itr\":" + 1 + ",\"w\":" + 1 + "," + jsonString(gMotifInfo) +
+    gITeM_FreqFWr.println("{ \"itr\":" + 1 + ",\"w\":" + 1 + "," + jsonString(gMotifInfo) +
                              "}")
-    gMotifAllProbFWr.flush()
+    gITeM_FreqFWr.flush()
     gOffsetAllFWriter.println("{ \"itr\":" +  1 + ",\"w\":" + 1 + "," + jsonStringLong(gOffsetInfo) + "}")
     //gOffsetAllFWriter.println(
       //1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     //)
-    gMotifOrbit_Ind_FWr.println(
-      1 + "," + 1 + "," + gMotifOrbit_Ind_Info.flatten.mkString(",")
-    )
+    gOrbit_Ind_FWr.println("{ \"itr\":" +  1 + ",\"w\":" + 1 + "," + jsonStringDouble(gOrbit_Ind,"orb") + "}")
+    gOrbit_Ind_FWr.flush()
     gOffsetAllFWriter.flush()
     gMotifAllProb_IndividualFWr.flush()
-    gMotifOrbit_Ind_FWr.flush()
 
     /*
      * Generate Output
@@ -785,7 +781,7 @@ object STM_NodeArrivalRateMultiType {
      */
     val normMotifProb: ListBuffer[Double] =
       gMotifInfo.flatMap(f0 => f0.map(f1 => f1.toDouble / duration))
-    gMotifProbFWr.println(normMotifProb.mkString("\n"))
+    gITeMRateFWr.println(normMotifProb.mkString("\n"))
 
 
     val offsetProb: ListBuffer[Long] =
@@ -795,7 +791,7 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Output files
      */
-    gMotifProbFWr.flush()
+    gITeMRateFWr.flush()
     gOffsetFWriter.flush()
 
     return (normMotifProb, offsetProb)
@@ -891,7 +887,7 @@ object STM_NodeArrivalRateMultiType {
             gVtxIndFWr.println(
               "num_v_nonverlapping,num_v_max,v_independence_" + itr + "_" + i
             )
-            gMotifIndFWr.println(
+            gITeM_IndFWr.println(
               "num_total_motif,num_ind_motif," +
                 "motif_independence_" + itr + "_" + i
             )
@@ -931,11 +927,11 @@ object STM_NodeArrivalRateMultiType {
             /*
              * Write current GMotifInfo to the "All" file
              */
-            gMotifAllProbFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonString(gMotifInfo) + "}")
+            gITeM_FreqFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonString(gMotifInfo) + "}")
             //gMotifAllProbFWr.println(
               //itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
             //)
-            gMotifAllProbFWr.flush()
+            gITeM_FreqFWr.flush()
             gOffsetAllFWriter.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringLong(gOffsetInfo,"off") + "}")
             //gOffsetAllFWriter.println(
               //itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
@@ -943,8 +939,8 @@ object STM_NodeArrivalRateMultiType {
             gOffsetAllFWriter.flush()
 
             //gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
-            gMotifOrbitAll_IndAbsCnt_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gMotifOrbit_Ind_Info,"orb") + "}")
-            gMotifOrbitAll_IndAbsCnt_FWr.flush()
+            gOrbit_Ind_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gOrbit_Ind,"orb") + "}")
+            gOrbit_Ind_FWr.flush()
 
             // gMotifInfo gOffsetInfo has counts for local graph
             if (gMotifInfo_itr_local.isEmpty) {
@@ -1029,12 +1025,12 @@ object STM_NodeArrivalRateMultiType {
      */
     gMotifInfo_global = gMotifInfo_global.map(m => m / num_iterations)
     gOffsetInfo_global = gOffsetInfo_global.map(o => o / num_iterations)
-    gMotifProbFWr.println(gMotifInfo_global.mkString("\n"))
+    gITeMRateFWr.println(gMotifInfo_global.mkString("\n"))
     gOffsetFWriter.println(gOffsetInfo_global.mkString("\n"))
     /*
      * Output files
      */
-    gMotifProbFWr.flush()
+    gITeMRateFWr.flush()
     gOffsetFWriter.flush()
     (gMotifInfo_global, gOffsetInfo_global)
   }
@@ -1813,7 +1809,7 @@ object STM_NodeArrivalRateMultiType {
         .map(edge => edge._1)
         .distinct()
         .count
-      gMotifOrbit_Ind_Info += List(numVOrbit.toDouble / num_nonoverlapping_m)
+      gOrbit_Ind += List(numVOrbit.toDouble / num_nonoverlapping_m)
     } else if (motifName.equalsIgnoreCase("triad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
       val orbit_vertex: RDD[(Int, Set[Int])] = motif_edges
@@ -1853,7 +1849,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(3, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbit_Ind_Info += orbit_independence
+      gOrbit_Ind += orbit_independence
     } else if (motifName.equalsIgnoreCase("outdiad") ||
                motifName.equalsIgnoreCase("indiad") ||
                motifName.equalsIgnoreCase("twoloop")) {
@@ -1874,7 +1870,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbit_Ind_Info += orbit_independence
+      gOrbit_Ind += orbit_independence
     } else if (motifName.equalsIgnoreCase("inoutdiad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
       val orbit_count: Map[Int, Int] = motif_edges
@@ -1894,7 +1890,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(3, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbit_Ind_Info += orbit_independence
+      gOrbit_Ind += orbit_independence
     } else if (motifName.equalsIgnoreCase("instar") ||
                motifName.equalsIgnoreCase("outstar")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
@@ -1920,7 +1916,7 @@ object STM_NodeArrivalRateMultiType {
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m
       )
-      gMotifOrbit_Ind_Info += orbit_independence
+      gOrbit_Ind += orbit_independence
     }
   }
 
@@ -2071,9 +2067,9 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (
             motifName.equalsIgnoreCase("quad")){
-          gMotifOrbit_Ind_Info += List(Double.NaN)
+          gOrbit_Ind += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("twoloop")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN)
         }
         return sc.emptyRDD
       }
@@ -2611,12 +2607,12 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (motifName.equalsIgnoreCase("triangle")
         ) {
-          gMotifOrbit_Ind_Info += List(Double.NaN)
+          gOrbit_Ind += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("triad")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("instar") ||
           motifName.equalsIgnoreCase("outstar")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN)
         }
         return (resultantGraph,sc.emptyRDD)
       }
@@ -2635,12 +2631,12 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (motifName.equalsIgnoreCase("triangle")
             ) {
-          gMotifOrbit_Ind_Info += List(Double.NaN)
+          gOrbit_Ind += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("triad")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("instar") ||
                   motifName.equalsIgnoreCase("outstar")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN)
         }
         return (resultantGraph, sc.emptyRDD)
       }
@@ -2872,13 +2868,13 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (
           motifName.equalsIgnoreCase("loop")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN)
+          gOrbit_Ind += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("outdiad") ||
           motifName.equalsIgnoreCase("indiad")
         ){
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("inoutdiad")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN,Double.NaN)
         }
         return sc.emptyRDD
       }
@@ -2897,13 +2893,13 @@ object STM_NodeArrivalRateMultiType {
         write_motif_independence(0,0)
         if (
             motifName.equalsIgnoreCase("loop")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN)
+          gOrbit_Ind += List(Double.NaN)
         }else if (motifName.equalsIgnoreCase("outdiad") ||
                   motifName.equalsIgnoreCase("indiad")
                       ){
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN)
         }else if (motifName.equalsIgnoreCase("inoutdiad")) {
-          gMotifOrbit_Ind_Info += List(Double.NaN,Double.NaN,Double.NaN)
+          gOrbit_Ind += List(Double.NaN,Double.NaN,Double.NaN)
         }
 
         return sc.emptyRDD
@@ -2993,8 +2989,8 @@ object STM_NodeArrivalRateMultiType {
     for (et1 <- gETypes.indices) {
       for (et2 <- gETypes.indices) {
         val spark = SparkSession.builder().getOrCreate()
-        
-        
+
+
         val sc = spark.sparkContext
         val sqlc = spark.sqlContext
 
@@ -3018,14 +3014,14 @@ object STM_NodeArrivalRateMultiType {
 
         val uniqeEDF = sqlc
           .createDataFrame(validMotifsArray)
-          .toDF("src", "type", "dst", "time") 
+          .toDF("src", "type", "dst", "time")
 
         /*
          * 			dataFrame's except methods returns distinct edges by default.
          * 			See more detail in processUniqueMotif_3Edges method
          *
          */
-        val newEDF = tmpG.edges.except(uniqeEDF) 
+        val newEDF = tmpG.edges.except(uniqeEDF)
         import sqlc.implicits._
         val newVRDD = newEDF
           .flatMap(
@@ -3092,7 +3088,7 @@ object STM_NodeArrivalRateMultiType {
         tmpG
           .find(gAtomicMotifs(motifName))
           .filter("a != b")
-          .filter("e1.type = " + gETypes(et1)) 
+          .filter("e1.type = " + gETypes(et1))
       val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
       val selctedMotifEdges = overlappingMotifs
         .select(selectEdgeArr.head, selectEdgeArr.tail: _*)
@@ -3210,13 +3206,13 @@ object STM_NodeArrivalRateMultiType {
       out_dir_base.mkdirs()
 
     try {
-      moveFileInner(gMotifProbFile)
-      moveFileInner(gMotifAllProbFile)
+      moveFileInner(gITeMRateFile)
+      moveFileInner(gITeM_FreqFile)
       moveFileInner(gMotifAllProbFile_Individual)
       moveFileInner(gOffsetFile)
       moveFileInner(gOffsetAllFile)
       moveFileInner(gVertexBirthFile)
-      moveFileInner(gMotifIndFile)
+      moveFileInner(gITeM_IndFile)
       moveFileInner(gVtxIndFile)
       moveFileInner(gHigherGraphFile)
 
@@ -3243,12 +3239,12 @@ object STM_NodeArrivalRateMultiType {
   def write_motif_independence(overlapping_cnt: Long,
                                non_overlapping_cnt: Long): Unit = {
     // write motif uniqueness file
-    gMotifIndFWr.println(
+    gITeM_IndFWr.println(
         non_overlapping_cnt + "," +
         overlapping_cnt + "," +
         non_overlapping_cnt.toDouble / overlapping_cnt.toDouble
     )
-    gMotifIndFWr.flush()
+    gITeM_IndFWr.flush()
   }
 
   def write_vertex_independence(num_v_nonoverlapping: Long,
