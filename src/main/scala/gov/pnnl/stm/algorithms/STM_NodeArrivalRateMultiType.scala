@@ -45,18 +45,18 @@ object STM_NodeArrivalRateMultiType {
 
   println("######OBJECT CREATED ; STM_NodeArrivalRateMultiType ######")
   val t1 = System.nanoTime()
-  val prefix_annotation = "kdd"
+  val prefix_annotation = ""
   val gGraphEmebdding = ListBuffer[Object]()
   val gMotifInfo = ListBuffer.empty[List[Int]]
   val gOrbit_Ind = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
   val gITeMRateFile = new File(
-    t1 + "_ITeM_Rate_" + prefix_annotation + ".txt"
+    t1 + "_ITeM_Rate" + prefix_annotation + ".txt"
   )
   val gITeMRateFWr = new PrintWriter(gITeMRateFile)
   val gITeM_FreqFile = new File(
-    t1 + "_ITeM_Freq_" + prefix_annotation + ".txt"
+    t1 + "_ITeM_Freq" + prefix_annotation + ".txt"
   )
   val gITeM_FreqFWr = new PrintWriter(gITeM_FreqFile)
   gITeM_FreqFWr.println("[")
@@ -65,7 +65,7 @@ object STM_NodeArrivalRateMultiType {
   * Orbit Independence for each oribit position
    */
   val gOrbitFile = new File(
-    t1 + "_Orbit_Independence_" + prefix_annotation + ".txt"
+    t1 + "_Orbit_Ind" + prefix_annotation + ".txt"
   )
   val gOrbit_Ind_FWr = new PrintWriter( gOrbitFile )
 
@@ -76,24 +76,24 @@ object STM_NodeArrivalRateMultiType {
   val gMotifAllProb_IndividualFWr = new PrintWriter(
     gMotifAllProbFile_Individual
   )
-  val gOffsetFile = new File(t1 + "_Offset_Rate_" + prefix_annotation + ".txt")
+  val gOffsetFile = new File(t1 + "_Offset_Rate" + prefix_annotation + ".txt")
   val gOffsetFWriter = new PrintWriter(gOffsetFile)
   val gOffsetAllFile = new File(
-    t1 + "_Offset_AbsCount_" + prefix_annotation + ".txt"
+    t1 + "_Offset_AbsCount" + prefix_annotation + ".txt"
   )
   val gOffsetAllFWriter = new PrintWriter(gOffsetAllFile)
   val gVertexBirthFile = new File(
-    t1 + "_VertexBirth_" + prefix_annotation + ".txt"
+    t1 + "_VertexBirth" + prefix_annotation + ".txt"
   )
   val gVertexBirthFWriter = new PrintWriter(gVertexBirthFile)
   val gITeM_IndFile = new File(
-    t1 + "_ITeM_Independence_" + prefix_annotation + ".txt"
+    t1 + "_Motif_Ind" + prefix_annotation + ".txt"
   )
   val gITeM_IndFWr = new PrintWriter(
     new FileWriter(gITeM_IndFile, true)
   )
   val gVtxIndFile = new File(
-    t1 + "_Vertex_Independence_" + prefix_annotation + ".txt"
+    t1 + "_Vertex_Ind" + prefix_annotation + ".txt"
   )
   val gVtxIndFWr = new PrintWriter(
     new FileWriter(gVtxIndFile, true)
@@ -1519,7 +1519,7 @@ object STM_NodeArrivalRateMultiType {
   def writeMotifVertexAssoication(allV: Array[Int], motifName: String): Unit = {
     gMotifVtxAssoFWr.println(
       currItrID + "," +
-        currItrID + "," +
+        currWinID + "," +
         gMotifNameToKey(motifName) + "," +
         allV.mkString(",")
     )
@@ -1778,9 +1778,24 @@ object STM_NodeArrivalRateMultiType {
     set_of_v
   }
 
+  def write_orbit_association(orbit_vertex_asso: Array[(vertexId, Set[vertexId])], motifName: String):Unit =
+    {
+      /*
+      * Write orbit_vertex_association file
+      */
+      val orbitIDMapMotif = gMotifNameToOrbitKeys(motifName)
+      orbit_vertex_asso.foreach(ova => {
+        gOrbtVtxAssoFWr.println(
+          currItrID + "," + currWinID + "," +
+            +orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
+        )
+      })
+      gOrbtVtxAssoFWr.flush()
+    }
+
   def writeOrbitIndependence_VertexAssociation(true_mis_set_rdd: RDD[String],
                                                num_nonoverlapping_m: Long,
-                                               motifName: String,max_cores:Int): Unit = {
+                                               motifName: String, max_cores:Int): Unit = {
     /*
        "simultanious edge" -> : ALWAYS ONE SO DON'T WRITE
        "non-sim multi edge" -> " ALWAYS ONE SON DONT WRITE
@@ -1825,17 +1840,7 @@ object STM_NodeArrivalRateMultiType {
 
       val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
 
-      /*
-       * Write orbit_vertex_association file
-       */
-      val orbitIDMapMotif = gMotifNameToOrbitKeys(motifName)
-      orbit_vertex_asso.foreach(ova => {
-        gOrbtVtxAssoFWr.println(
-          currItrID + "," + currWinID + "," +
-            +orbitIDMapMotif(ova._1) + "," + ova._2.mkString(",")
-        )
-      })
-      gOrbtVtxAssoFWr.flush()
+      write_orbit_association(orbit_vertex_asso,motifName)
 
       /*
        * Write orbit independence
@@ -1854,17 +1859,47 @@ object STM_NodeArrivalRateMultiType {
                motifName.equalsIgnoreCase("indiad") ||
                motifName.equalsIgnoreCase("twoloop")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_count: Map[Int, Int] = motif_edges
-        .flatMap(edge_arr => {
-          val e1 = edge_arr(0).split("_")
-          val e2 = edge_arr(1).split("_")
-          //there are two orbits, a and b|c
-          Iterator((1, e1(0).toInt), (2, e1(3).toInt), (2, e2(1).toInt))
-        })
-        .distinct()
-        .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y,max_cores)
-        .collect()
+      val orbit_vertex : RDD[(Int, Set[Int])] =
+        if(motifName.equalsIgnoreCase("outdiad"))
+        {
+          motif_edges
+            .flatMap(edge_arr => {
+              val e1 = edge_arr(0).split("_")
+              val e2 = edge_arr(1).split("_")
+              //there are two orbits, a and b|c
+              Iterator((1, Set(e1(0).toInt)),
+                (2, Set(e1(2).toInt , e2(2).toInt)))
+            })
+            .distinct()
+        } else if(motifName.equalsIgnoreCase("indiad"))
+          {
+            motif_edges
+              .flatMap(edge_arr => {
+                val e1 = edge_arr(0).split("_")
+                val e2 = edge_arr(1).split("_")
+                //there are two orbits, a and b|c
+                Iterator((1, Set(e1(2).toInt)),
+                  (2, Set(e1(0).toInt , e2(0).toInt)))
+              })
+              .distinct()
+          }else // twoloop
+          {
+            motif_edges
+              .flatMap(edge_arr => {
+                val e1 = edge_arr(0).split("_")
+                val e2 = edge_arr(1).split("_")
+                //there are two orbits, b and a|c
+                Iterator((1, Set(e1(2).toInt)),
+                  (1, Set(e1(0).toInt , e2(2).toInt)))
+              })
+              .distinct()
+          }
+
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+      write_orbit_association(orbit_vertex_asso,motifName)
+
+      val orbit_count: Map[Int, Int]  = orbit_vertex_asso
+        .map(x => (x._1, x._2.size))
         .toMap
       val orbit_independence = List(
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
@@ -1873,18 +1908,22 @@ object STM_NodeArrivalRateMultiType {
       gOrbit_Ind += orbit_independence
     } else if (motifName.equalsIgnoreCase("inoutdiad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_count: Map[Int, Int] = motif_edges
+      val orbit_vertex : RDD[(Int, Set[Int])] = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           //there are three orbits, a,b,c
-          Iterator((1, e1(0).toInt), (2, e1(3).toInt), (3, e2(2).toInt))
+          Iterator((1, Set(e1(0).toInt)),
+            (2, Set(e1(2).toInt)),
+            (3, Set(e2(2).toInt)))
         })
         .distinct()
-        .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y,max_cores)
-        .collect()
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+      write_orbit_association(orbit_vertex_asso,motifName)
+      val orbit_count: Map[Int, Int] = orbit_vertex_asso
+        .map(x => (x._1, x._2.size))
         .toMap
+
       val orbit_independence = List(
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m,
@@ -1894,24 +1933,28 @@ object STM_NodeArrivalRateMultiType {
     } else if (motifName.equalsIgnoreCase("instar") ||
                motifName.equalsIgnoreCase("outstar")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_count: Map[Int, Int] = motif_edges
+
+      val orbit_vertex : RDD[(Int, Set[Int])] = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           val e3 = edge_arr(2).split("_")
           //there are two orbits, a and b|c|d
           Iterator(
-            (1, e1(0).toInt),
-            (2, e1(3).toInt),
-            (2, e2(3).toInt),
-            (2, e3(3).toInt)
+            (1, Set(e1(0).toInt)),
+            (2, Set(e1(2).toInt)),
+            (2, Set(e2(2).toInt)),
+            (2, Set(e3(2).toInt))
           )
         })
         .distinct()
-        .map(x => (x._1, 1))
-        .reduceByKey((x, y) => x + y,max_cores)
-        .collect()
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+      write_orbit_association(orbit_vertex_asso,motifName)
+
+      val orbit_count: Map[Int, Int] = orbit_vertex_asso
+        .map(x => (x._1, x._2.size))
         .toMap
+
       val orbit_independence = List(
         orbit_count.getOrElse(1, 0).toDouble / num_nonoverlapping_m,
         orbit_count.getOrElse(2, 0).toDouble / num_nonoverlapping_m
@@ -1919,6 +1962,7 @@ object STM_NodeArrivalRateMultiType {
       gOrbit_Ind += orbit_independence
     }
   }
+
 
   def getEdgeOffsetMeanSDev(
       reuse_temporal_offset_info: ArrayBuffer[ArrayBuffer[eTime]]
