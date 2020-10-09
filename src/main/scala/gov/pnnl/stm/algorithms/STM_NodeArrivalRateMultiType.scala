@@ -50,6 +50,8 @@ object STM_NodeArrivalRateMultiType {
   val gMotifInfo = ListBuffer.empty[List[Int]]
   val gOrbit_Ind = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
+  var gVertex_ITeM_Freq : Map[Int,Map[Int,Int]] = scala.collection.Map.empty
+
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
   val gITeMRateFile = new File(
     t1 + "_ITeM_Rate" + prefix_annotation + ".txt"
@@ -99,20 +101,25 @@ object STM_NodeArrivalRateMultiType {
     new FileWriter(gVtxIndFile, true)
   )
   val gOrbtVtxAssoFile = new File(
-    t1 + "_Orbit_Association_" + prefix_annotation + ".txt"
+    t1 + "_Orbit_Association" + prefix_annotation + ".txt"
   )
   val gOrbtVtxAssoFWr = new PrintWriter(
     new FileWriter(gOrbtVtxAssoFile, true)
   )
   val gMotifVtxAssoFile = new File(
-    t1 + "_Motif_Association_" + prefix_annotation + ".txt"
+    t1 + "_Motif_Association" + prefix_annotation + ".txt"
   )
   val gMotifVtxAssoFWr = new PrintWriter(
     new FileWriter(gMotifVtxAssoFile, true)
   )
-
+  val gVexITeMFreqFile = new File(
+    t1 + "_Vertex_ITeM_Frequency" + prefix_annotation + ".txt"
+  )
+  val gVertexITeMFreqFWr = new PrintWriter(
+    new FileWriter(gVexITeMFreqFile, true)
+  )
   val gHigherGraphFile = new File(
-    t1 + "_HigherGraph_" + prefix_annotation + "" + ".txt"
+    t1 + "_HigherGraph" + prefix_annotation + "" + ".txt"
   )
   val gHigherGraphFWriter = new PrintWriter(
     new FileWriter(gHigherGraphFile, true)
@@ -120,14 +127,14 @@ object STM_NodeArrivalRateMultiType {
 
 
   val gWindowTimeFile = new File(
-                                   t1 + "_WindowTime_" + prefix_annotation + "" + ".txt"
+                                   t1 + "_WindowTime" + prefix_annotation + "" + ".txt"
                                  )
   val gWindowTimeFWriter = new PrintWriter(
                                              new FileWriter(gWindowTimeFile, true)
                                            )
 
   val gWindowSizeFile = new File(
-                                  t1 + "_WindowSize_" + prefix_annotation + "" + ".txt"
+                                  t1 + "_WindowSize" + prefix_annotation + "" + ".txt"
                                 )
   val gWindowSizeFWriter = new PrintWriter(
                                             new FileWriter(gWindowSizeFile, true)
@@ -139,7 +146,7 @@ object STM_NodeArrivalRateMultiType {
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
   val gMotifNameToOrbitKeys = STMConf.motifNameToOrbitKeys
-
+  val gmotifNameToITeMKeys = STMConf.motifNameToITeMKeys
   var currItrID = 1
   var currWinID = 1
   /*
@@ -431,6 +438,8 @@ object STM_NodeArrivalRateMultiType {
 
     val iso_v_cnt = isolated_v.count
 
+    updateITemFreq("isolatednode",isolated_v.collect().toList,0)
+
     writeMotifVertexAssoication(isolated_v.collect(), motifName)
 
     write_vertex_independence(iso_v_cnt, iso_v_cnt)
@@ -484,6 +493,11 @@ object STM_NodeArrivalRateMultiType {
     val selctedMotifEdges =
       iso_edgs.select(selectEdgeArr.head, selectEdgeArr.tail: _*)
     val iso_edge_cnt = selctedMotifEdges.count()
+    // update vertex item freq
+    val node_ids = selctedMotifEdges.rdd.flatMap(row
+    =>Iterable(get_row_src(row),get_row_dst(row))).collect().toList
+    updateITemFreq(motifName,node_ids , 0)
+
 
     val tmi_edges_rdd: RDD[(Int, Int, Int, Long)] =
       selctedMotifEdges.rdd.map(row => get_edge_from_row(row))
@@ -614,7 +628,7 @@ object STM_NodeArrivalRateMultiType {
      * we filter for edge type >= 0 because we use -1 edge type for isolated vertex
      * 1000 -1 1000 0 means 1000 is an isolated node
      */
-    val multi_edges_TAG = findSimultaniousMultiEdges(initial_tag,filterNodeIDs,max_cores ).cache()
+    val multi_edges_TAG = findSimultaniousMultiEdges(initial_tag,filterNodeIDs,max_cores,"simulatanious" ).cache()
 
     /*
      * Once simulatanious multi-edges are removed from the TAG, create GraphFrame
@@ -778,6 +792,7 @@ object STM_NodeArrivalRateMultiType {
      * Generate Output
      * 1. Motif Probability
      * 2. Edge Offset Probability
+     * 3. Vertex ITeM Frequency File
      */
     val normMotifProb: ListBuffer[Double] =
       gMotifInfo.flatMap(f0 => f0.map(f1 => f1.toDouble / duration))
@@ -787,6 +802,24 @@ object STM_NodeArrivalRateMultiType {
     val offsetProb: ListBuffer[Long] =
       gOffsetInfo.flatMap(f0 => f0.map(f1 => f1))
     gOffsetFWriter.println(offsetProb.mkString("\n"))
+
+      for((vid,item_freq) <- gVertex_ITeM_Freq)
+      {
+        gVertexITeMFreqFWr.print(vid)
+        /*
+         *
+         * get vertex - ITeM frequency
+         * [v_id->[item_id->frequency]]
+         */
+     for(i<-0 to 51)
+          {
+            //verte item freq
+            val vif = item_freq.getOrElse(i,0)
+            gVertexITeMFreqFWr.print(","+vif)
+          }
+        gVertexITeMFreqFWr.println()
+      }
+      gVertexITeMFreqFWr.flush()
 
     /*
      * Output files
@@ -1035,7 +1068,7 @@ object STM_NodeArrivalRateMultiType {
     (gMotifInfo_global, gOffsetInfo_global)
   }
 
-  def findSimultaniousMultiEdges(inputSimpleTAG: SimpleTAGRDD,filterNodeIDs:Array[vertexId],max_cores:Int): SimpleTAGRDD = {
+  def findSimultaniousMultiEdges(inputSimpleTAG: SimpleTAGRDD,filterNodeIDs:Array[vertexId],max_cores:Int,motif_name :String): SimpleTAGRDD = {
 
     val sim_e_base = if(filterNodeIDs.length > 0){ inputSimpleTAG.filter(e
       => filterNodeIDs.contains(e._1) && filterNodeIDs.contains(e._3))}
@@ -1118,7 +1151,7 @@ object STM_NodeArrivalRateMultiType {
             numReusedNodes = numReusedNodes + 1
 
         }
-
+        updateITemFreq(motif_name,node_ids,numReusedNodes)
         local_reuse_node_info = local_reuse_node_info +
           (numReusedNodes ->
             (local_reuse_node_info.getOrElse(numReusedNodes, 0) +
@@ -1292,6 +1325,7 @@ object STM_NodeArrivalRateMultiType {
             },max_cores)
             .cache()
 
+
         // unpersist validMotifs as it takes hume amount for some graphs Ex: wiki_talk
         validMotifs.unpersist(true)
         val avg_offset_time_perkey = multi_edges_info.map(m_info => {
@@ -1343,7 +1377,9 @@ object STM_NodeArrivalRateMultiType {
         )
         multi_edge_nodes.foreach(v => multi_edge_node_file.println(v))
         multi_edge_node_file.flush()
-
+        // get node ids for item frequency update
+        val node_ids = multi_edge_nodes.toList
+        updateITemFreq(motifName,node_ids,2)
         //vertex Ind depends on how many unique vertices exists
         val multi_edge_nodes_cnt = multi_edge_nodes.length
         val max_possible_multi_edge_nodes = 2 * multi_edges_to_remove.count()
@@ -1432,14 +1468,25 @@ object STM_NodeArrivalRateMultiType {
       val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
       val gVBirthTime_exec = gSC.broadcast(gVBirthTime).value
 
-      val new_self_loop_cnt = selctedMotifEdges
+      val new_self_loop_v =selctedMotifEdges
         .filter(row => {
           val v = get_row_src(row)
           val t = get_row_time(row)
-          gVBirthTime_exec.getOrElse(v, -1) == t
-        })
-        .count()
-        .toInt
+          gVBirthTime_exec.getOrElse(v, -2) == t
+        }).persist()
+      val new_self_loop_cnt = new_self_loop_v.count().toInt
+      val reuse_self_loop_v =selctedMotifEdges
+        .filter(row => {
+          val v = get_row_src(row)
+          val t = get_row_time(row)
+          gVBirthTime_exec.getOrElse(v, -2) != t
+        }).persist()
+      //update item freq
+      val new_node_ids = new_self_loop_v.rdd.map(row=>get_row_src(row)).collect().toList
+      val reuse_node_ids = reuse_self_loop_v.rdd.map(row=>get_row_src(row)).collect().toList
+
+      updateITemFreq(motifName,new_node_ids,0)
+      updateITemFreq(motifName,reuse_node_ids,1)
 
       // edge offset is not relevent here
       val total_self_loop_cnt = selctedMotifEdges.count()
@@ -1668,10 +1715,42 @@ object STM_NodeArrivalRateMultiType {
    * because node-time is minimum time of all the adjacent edges.
    */
 
+  def updateITemFreq(motif_name: String, node_ids: List[vertexId], numReusedNodes: Int) :Unit=
+  {
+    /*
+         *
+         * get vertex - ITeM frequency
+         * [v_id->[item_id->frequency]]
+         */
+    var vertex_item_freq : Map[Int,Map[Int,Int]] = scala.collection.Map.empty
+    /*
+
+         setup vertex -item -freq
+          */
+    //println("motif name is " + motif_name)
+    val possible_ITEM_IDs = gmotifNameToITeMKeys.get(motif_name)
+    val ITeM_ID = possible_ITEM_IDs.get(numReusedNodes)
+    for(nid <- node_ids)
+    {
+      val existing_freq_map :Map[Int,Int] = vertex_item_freq.getOrElse(nid,scala.collection.Map.empty)
+      // Every node belong th this ITeM_ID
+      val updated_freq = existing_freq_map.getOrElse(ITeM_ID,0) + 1
+      val update_freq_map = existing_freq_map + (ITeM_ID -> updated_freq)
+      vertex_item_freq = vertex_item_freq + (nid ->update_freq_map)
+      // now frequency of a specific ITeM_Id is updated
+    }
+    //println("before item freq" + gVertex_ITeM_Freq.toString())
+    //println("local ferq" + vertex_item_freq.toString())
+    gVertex_ITeM_Freq = gVertex_ITeM_Freq |+| vertex_item_freq
+    //println("after item ferq" + gVertex_ITeM_Freq.toString())
+  }
+
+
   def get_node_reuse_info_from_mis_motif(
       num_motif_nodes: vertexId,
       num_motif_edges: vertexId,
-      mis_set: RDD[String]
+      mis_set: RDD[String],
+      motif_name :String
   ): Map[vertexId, vertexId] = {
 
     val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
@@ -1705,6 +1784,7 @@ object STM_NodeArrivalRateMultiType {
         var local_reuse_node_info: Map[Int, Int] = Map.empty
         for (i <- 0 to num_motif_nodes)
           local_reuse_node_info += (i -> 0)
+
 
         /*
          * Get Node Ids
@@ -1746,7 +1826,7 @@ object STM_NodeArrivalRateMultiType {
                *  6.088413505562374E-9
              2.1309447269468312E-7
              1.6499600600074035E-6
-             9.223946460926997E-6
+             9.223946460926997motifNameToOrbitKeysE-6
              instead it has:
              0.0
              0.0
@@ -1757,6 +1837,9 @@ object STM_NodeArrivalRateMultiType {
             } else
             numReusedNodes = numReusedNodes + 1
         }
+
+        updateITemFreq(motif_name,node_ids,numReusedNodes)
+
 
         local_reuse_node_info = local_reuse_node_info + (numReusedNodes
           -> (local_reuse_node_info.getOrElse(numReusedNodes, 0) + 1))
@@ -1827,18 +1910,20 @@ object STM_NodeArrivalRateMultiType {
       gOrbit_Ind += List(numVOrbit.toDouble / num_nonoverlapping_m)
     } else if (motifName.equalsIgnoreCase("triad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_vertex: RDD[(Int, Set[Int])] = motif_edges
+      val orbit_vertex: RDD[(Int, Array[Int])] = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           val e3 = edge_arr(2).split("_")
-          Iterator((1, Set(e1(0).toInt)),
-                   (2, Set(e2(0).toInt)),
-                   (3, Set(e3(0).toInt)))
+          Iterator((1, Array(e1(0).toInt)),
+                   (2, Array(e2(0).toInt)),
+                   (3, Array(e3(0).toInt)))
         })
         .distinct()
 
-      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+      val orbit_vertex_asso : RDD[(Int, Array[Int])] = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+//We need to convert it to list and then get a map of frequency to write vertex_orbit_freqency
+
 
       write_orbit_association(orbit_vertex_asso,motifName)
 
@@ -2171,7 +2256,8 @@ object STM_NodeArrivalRateMultiType {
     val reuse_node_info: Map[Int, Int] = get_node_reuse_info_from_mis_motif(
       num_motif_nodes,
       num_motif_edges,
-      true_mis_set_rdd
+      true_mis_set_rdd,
+      motifName
     )
 
     gMotifAllProb_IndividualFWr.println(
@@ -2442,7 +2528,8 @@ object STM_NodeArrivalRateMultiType {
     val reuse_node_info_star = get_node_reuse_info_from_mis_motif(
       num_motif_nodes,
       num_motif_edges,
-      true_mis_set_rdd_star
+      true_mis_set_rdd_star,
+      motifName
     )
 
     val filteredTmpG =
@@ -2740,7 +2827,8 @@ object STM_NodeArrivalRateMultiType {
     val reuse_node_info: Map[Int, Int] = get_node_reuse_info_from_mis_motif(
       num_motif_nodes,
       num_motif_edges,
-      true_mis_set_rdd
+      true_mis_set_rdd,
+      motifName
     )
 
     myprintln("sneaky star gMotif " + reuse_node_info_star.values.toList)
@@ -2995,7 +3083,8 @@ object STM_NodeArrivalRateMultiType {
       get_node_reuse_info_from_mis_motif(
         num_motif_nodes,
         num_motif_edges,
-        true_mis_set_rdd
+        true_mis_set_rdd,
+        motifName
       )
 
     gMotifAllProb_IndividualFWr.println(
@@ -3204,18 +3293,36 @@ object STM_NodeArrivalRateMultiType {
           .foreach(row => gHigherGraphFWriter.println(get_row_id(row)))
         gHigherGraphFWriter.flush()
       }
-      val one_new_nodes_motif_cnt = selctedMotifEdges
+      val one_new_nodes = selctedMotifEdges
         .filter(row => {
           val src = get_row_src(row)
           val dst = get_row_dst(row)
           val etime = get_row_time(row)
           if ((gVBirthTime.getOrElse(src, -1) == etime) || (gVBirthTime
-                .getOrElse(dst, -1) == etime))
+            .getOrElse(dst, -1) == etime))
             true
           else false
-        })
-        .count()
-        .toInt
+        }).persist()
+
+      val one_new_nodes_motif_cnt = one_new_nodes.count().toInt
+
+      val both_reused_nodes = selctedMotifEdges.filter(row => {
+          val src = get_row_src(row)
+          val dst = get_row_dst(row)
+          val etime = get_row_time(row)
+          if ((gVBirthTime.getOrElse(src, -1) == etime) || (gVBirthTime
+            .getOrElse(dst, -1) == etime))
+            false
+          else true
+        }).persist()
+
+
+
+      // update vertex item frequency
+      val new_node_ids = one_new_nodes.rdd.map(row=>get_row_src(row)).collect().toList
+      val reuse_node_ids = both_reused_nodes.rdd.map(row=>get_row_src(row)).collect().toList
+      updateITemFreq(motifName,new_node_ids,0)
+      updateITemFreq(motifName,reuse_node_ids,1)
 
       write_motif_independence(num_residual_edges, num_residual_edges)
       write_vertex_independence(num_residual_edges * 2, num_residual_edges * 2)

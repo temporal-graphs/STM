@@ -61,4 +61,24 @@ object STMConf {
     "inoutdiad" -> Map(1->24,2->25,3->26),
     "residualedge" -> Map(1->27,2->28)
   )
+
+  val motifNameToITeMKeys: Map[String,Map[Int,Int]] =
+    Map(
+      "simulatanious" -> Map(0->0,1->1,2->2),
+      "isolatednode" -> Map(0->3),
+      "isolatededge" -> Map(0->4),
+      "multiedge"-> Map(2->5),
+      "selfloop"-> Map(0->6,1->7),
+      "triangle" -> Map(0->8,1->9,2->10,3->11),
+      "triad" -> Map(0->12,1->13,2->14,3->15),
+      "twoloop"-> Map(0->16,1->17,2->18,3->19),
+      "quad"-> Map(0->20,1->21,2->22,3->23,4->24),
+      "loop" -> Map(0->25,1->26,2->27),
+      "outstar" -> Map(0->28,1->29,2->30,3->31,4->32),
+      "instar" -> Map(0->33,1->34,2->35,3->36,4->37),
+      "outdiad" -> Map(0->38,1->39,2->40,3->41),
+      "indiad" -> Map(0->42,1->43,2->44,3->45),
+      "inoutdiad" -> Map(0->46,1->47,2->48,3->49),
+      "residualedge" -> Map(0->50,1->51)
+    )
 }
