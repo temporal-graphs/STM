@@ -6,3 +6,10 @@ Temporal networks are a specialization of general networks where temporal evolut
 understand as the structure of entities and relationships. 
 
 Please contact Sumit.Purohit@pnnl.gov for any question.
+
+
+clone TAGBuilder and install it
+
+clone https://github.com/temporal-graphs/TAGBuilder.git
+mvn clean package
+
