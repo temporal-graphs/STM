@@ -147,7 +147,7 @@ object STM_NodeArrivalRateMultiType {
                                             new FileWriter(gWindowSizeFile, true)
                                           )
 
-  val gDebug = true
+  val gDebug = false
   val gHigherGOut = true
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
@@ -2865,10 +2865,10 @@ object STM_NodeArrivalRateMultiType {
       "e3.dst",
       "e3.time"
     )
-    println("starting caching")
+    myprintln("starting caching")
     overlappingMotifs.repartition(max_cores)
     overlappingMotifs.cache()
-    println("done caching. starting count")
+    myprintln("done caching. starting count")
 
     val num_overlap_motifs = overlappingMotifs.count()
     val selctedMotifEdges_local_nonoverlap =
@@ -3538,7 +3538,7 @@ object STM_NodeArrivalRateMultiType {
       files.foreach(afile => moveFileInner(afile))
     } catch {
       case e: Exception => {
-        myprintln("\nERROR: Failed to move files = ")
+        println("\nERROR: Failed to move files = ")
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         myprintln("\n Exception is  " + sw.toString())

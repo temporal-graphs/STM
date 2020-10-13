@@ -1,17 +1,10 @@
 package gov.pnnl.stm.algorithms
 
-import java.io.{PrintWriter, StringWriter}
-
-import org.apache.spark.SparkContext
-import org.apache.spark.graphx.util.GraphGenerators
-import org.apache.spark.graphx.{EdgeDirection, Graph, VertexId}
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.graphx.{EdgeDirection, Graph}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.graphframes.GraphFrame
-
-import scala.util.Random
-import util.control.Breaks._
 
 
 object MaximumIndependentSet {
@@ -37,7 +30,7 @@ object MaximumIndependentSet {
     val overlap_graph_vertices = dataframe.rdd.map(row
       => (getMotifId(row))).toDF("id").cache()
 
-    println("verlap graph vertices count " , overlap_graph_vertices.count())
+    println("overlap graph vertices count " , overlap_graph_vertices.count())
 
     val edge_overlap :RDD[(String,Set[String])] = dataframe.rdd.flatMap(row =>{
     val motif_id:String = getMotifId(row)
