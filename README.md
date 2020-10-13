@@ -8,8 +8,12 @@ understand as the structure of entities and relationships.
 Please contact Sumit.Purohit@pnnl.gov for any question.
 
 
-clone TAGBuilder and install it
+#clone TAGBuilder and install it
 
-clone https://github.com/temporal-graphs/TAGBuilder.git
+git clone https://github.com/temporal-graphs/TAGBuilder.git
+
 mvn clean package
 
+git clone https://github.com/temporal-graphs/STM.git
+
+mvn clean package
