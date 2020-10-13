@@ -1,4 +1,4 @@
-java -jar  ./target/uber-STM-1.3-SNAPSHOT.jar -Dspark.master=local[*] -input_file="D:\localdata\kdd_tech-as-topology.csv"
+java -jar ./target/uber-STM-1.3-SNAPSHOT.jar -Dspark.master=local[*] -input_file="D:\localdata\kdd_tech-as-topology.csv"
 -out_json_file_os_path="D:\localdata\mao_global_edges_ITeM_log2.json"
 -separator=","
 -avg_outdeg_file="D:\localdata\mao_global_edges_ITeM_log2_deg.csv"
@@ -12,3 +12,7 @@ java -jar  ./target/uber-STM-1.3-SNAPSHOT.jar -Dspark.master=local[*] -input_fil
 -max_cores=4
 -k_top=4
 -base_out_dir=".\output\itemfreq\"
+
+mkdir ./output/itemfreq_output
+
+python STMGetEmbedding.py ./output/itemfreq/ ./output/itemfreq_output/  
