@@ -816,14 +816,14 @@ object STM_NodeArrivalRateMultiType {
     /*
      * Write current GMotifInfo to the "All" file
      */
-    gITeM_FreqFWr.println("{ \"itr\":" + 1 + ",\"w\":" + 1 + "," + jsonString(gMotifInfo) +
+    gITeM_FreqFWr.println("{ \"itr\":" + 0 + ",\"w\":" + 0 + "," + jsonString(gMotifInfo) +
                              "}")
     gITeM_FreqFWr.flush()
-    gOffsetAllFWriter.println("{ \"itr\":" +  1 + ",\"w\":" + 1 + "," + jsonStringLong(gOffsetInfo) + "}")
+    gOffsetAllFWriter.println("{ \"itr\":" +  0 + ",\"w\":" + 0 + "," + jsonStringLong(gOffsetInfo) + "}")
     //gOffsetAllFWriter.println(
       //1 + "," + 1 + "," + gOffsetInfo.flatten.mkString(",")
     //)
-    gOrbit_Ind_FWr.println("{ \"itr\":" +  1 + ",\"w\":" + 1 + "," + jsonStringDouble(gOrbit_Ind,"orb") + "}")
+    gOrbit_Ind_FWr.println("{ \"itr\":" +  0 + ",\"w\":" + 0 + "," + jsonStringDouble(gOrbit_Ind,"orb") + "}")
     gOrbit_Ind_FWr.flush()
     gOffsetAllFWriter.flush()
     gMotifAllProb_IndividualFWr.flush()
