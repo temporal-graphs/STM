@@ -11,7 +11,6 @@ import java.nio.file.{Files, Paths}
 
 import scalaz.Scalaz._
 
-
 import util.control.Breaks._
 import org.apache.spark.sql._
 import org.apache.log4j.Level
@@ -31,6 +30,7 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
 import gov.pnnl.datamodel.TAG
+import org.apache.spark.graphx.VertexId
 
 /**
   * @author puro755
@@ -51,6 +51,7 @@ object STM_NodeArrivalRateMultiType {
   val gOrbit_Ind = ListBuffer.empty[List[Double]]
   val gOffsetInfo = ListBuffer.empty[List[Long]]
   var gVertex_ITeM_Freq : Map[Int,Map[Int,Int]] = scala.collection.Map.empty
+  var gVertex_Orbit_Freq : Map[Int,Map[Int,Int]] = scala.collection.Map.empty
 
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
   val gITeMRateFile = new File(
@@ -117,6 +118,12 @@ object STM_NodeArrivalRateMultiType {
   )
   val gVertexITeMFreqFWr = new PrintWriter(
     new FileWriter(gVexITeMFreqFile, true)
+  )
+  val gVexOrbitFreqFile = new File(
+    t1 + "_Vertex_Orbit_Frequency" + prefix_annotation + ".txt"
+  )
+  val gVertexOrbitFreqFWr = new PrintWriter(
+    new FileWriter(gVexOrbitFreqFile, true)
   )
   val gHigherGraphFile = new File(
     t1 + "_HigherGraph" + prefix_annotation + "" + ".txt"
@@ -201,6 +208,11 @@ object STM_NodeArrivalRateMultiType {
      * because spark could not initialize multiple spark context for the singleton object
      */
     val t_start = System.nanoTime()
+    val a = Map(1->Map(101->5), 2->Map(101->6))
+    val b = Map(1->Map(101->5), 2->Map(101->6), 3->Map(1->5))
+    val c = a |+|b
+    println(c)
+    //System.exit(-1)
 
     /*
      * Program specific configuration
@@ -255,18 +267,21 @@ object STM_NodeArrivalRateMultiType {
      *
      */
     //val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
-    var nodemap = scala.collection.mutable.Map[Int,String]()
 
 
     val nodemapFile = new PrintWriter((new File("nodeMap.txt")))
-    nodemap.foreach(e=>nodemapFile.println(e._1 + "," + e._2))
-    nodemapFile.flush()
 
     val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
     val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )) .cache()
     inputtag_varchartmp.unpersist(true)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     myprintln("filterset arr input "+ filterarr.toList)
+
+    val node_id_label :Array[(vertexId, Array[Char])]= inputtag_varchar.flatMap(entry=>Iterator((entry._1,entry._7(0)),
+      (entry._3,entry._7(1)))).distinct().collect()
+
+    node_id_label.foreach(v=>nodemapFile.println(v._1 +","+ v._2.mkString))
+    nodemapFile.flush()
 
     val filterNodeIDs_MaLo = inputtag_varchar.flatMap(entry=>{
 
@@ -411,7 +426,7 @@ object STM_NodeArrivalRateMultiType {
   def findIsolatedVtx(g_base: GraphFrame,
                       motifName: String,
                       gETypes: Array[eType],
-                      filterNodeIDs:Array[vertexId]): GraphFrame = {
+                      filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
 
     if (gDebug) {
       println("graph sizev ", g_base.vertices.count)
@@ -438,6 +453,20 @@ object STM_NodeArrivalRateMultiType {
 
     val iso_v_cnt = isolated_v.count
 
+    /*
+    update vertex orbit freque
+     */
+    //update vertex orbit frequency
+    val vertex_orbit_freq :RDD[(Int,Array[Int])]= isolated_v.map(v=>{
+      (v,Array(gMotifNameToOrbitKeys.get(motifName).get(1)))
+      // to fix: we should not have two orbits for simultanious mutli-edges
+    })
+    //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. 0,1,2
+    val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+    =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+
+    gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
+    //update vertex ITem freq
     updateITemFreq("isolatednode",isolated_v.collect().toList,0)
 
     writeMotifVertexAssoication(isolated_v.collect(), motifName)
@@ -459,7 +488,7 @@ object STM_NodeArrivalRateMultiType {
   def findIsolatedEdg(g_base: GraphFrame,
                       motifName: String,
                       gETypes: Array[eType],
-                      filterNodeIDs:Array[vertexId]): GraphFrame = {
+                      filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
 
     val spark = SparkSession.builder().getOrCreate()
 
@@ -491,13 +520,24 @@ object STM_NodeArrivalRateMultiType {
 
     val selectEdgeArr = Array("e1.src", "e1.type", "e1.dst", "e1.time")
     val selctedMotifEdges =
-      iso_edgs.select(selectEdgeArr.head, selectEdgeArr.tail: _*)
+      iso_edgs.select(selectEdgeArr.head, selectEdgeArr.tail: _*).persist()
     val iso_edge_cnt = selctedMotifEdges.count()
     // update vertex item freq
     val node_ids = selctedMotifEdges.rdd.flatMap(row
     =>Iterable(get_row_src(row),get_row_dst(row))).collect().toList
     updateITemFreq(motifName,node_ids , 0)
 
+    //update vertex orbit frequeyncy.
+    val vertex_orbit_freq :RDD[(Int,Array[Int])]= selctedMotifEdges.rdd.flatMap(e=>{
+      Iterator((get_row_src(e),Array(gMotifNameToOrbitKeys.get(motifName).get(1))),
+        (get_row_dst(e),Array(gMotifNameToOrbitKeys.get(motifName).get(2))))
+      // to fix: we should not have two orbits for simultanious mutli-edges
+    })
+    //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. 0,1,2
+    val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+    =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+
+    gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
 
     val tmi_edges_rdd: RDD[(Int, Int, Int, Long)] =
       selctedMotifEdges.rdd.map(row => get_edge_from_row(row))
@@ -653,10 +693,10 @@ object STM_NodeArrivalRateMultiType {
 
     // Fix the isolated node calculation. exception in the file read create a -1 node which
     // is used by the code so there is 1 more isolated nodes than requried.
-    g = findIsolatedVtx(g, "isolatednode", gETypes,filterNodeIDs)
-    g = findIsolatedEdg(g, "isolatededge", gETypes,filterNodeIDs)
+    g = findIsolatedVtx(g, "isolatednode", gETypes,filterNodeIDs,max_cores)
+    g = findIsolatedEdg(g, "isolatededge", gETypes,filterNodeIDs,max_cores)
     g = findNonSimMultiEdg(g, "multiedge", gETypes,filterNodeIDs,max_cores)
-    g = findSelfLoop(g, "selfloop", gETypes,filterNodeIDs)
+    g = findSelfLoop(g, "selfloop", gETypes,filterNodeIDs,max_cores)
     g = findTriad(g, "triangle", SYMMETRY, gETypes,dDelta,filterNodeIDs,k_top,max_cores).cache()
     g = findTriad(g, "triad", ASYMMETRY, gETypes,dDelta,filterNodeIDs,k_top,max_cores).cache()
     g = findQuad(g, "twoloop", gETypes,dDelta,filterNodeIDs,max_cores).cache()
@@ -667,7 +707,7 @@ object STM_NodeArrivalRateMultiType {
     g = findDyad(g, "outdiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs,max_cores).cache()
     g = findDyad(g, "indiad", SYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs,max_cores).cache()
     g = findDyad(g, "inoutdiad", ASYMMETRY, gETypes, 3, 2,dDelta,filterNodeIDs,max_cores).cache()
-    g = findResidualEdg(g, "residualedge", gETypes,filterNodeIDs).cache()
+    g = findResidualEdg(g, "residualedge", gETypes,filterNodeIDs,max_cores).cache()
 
     if (gDebug) {
       println("FINAL after residual graph sizev ", g.vertices.count)
@@ -678,7 +718,7 @@ object STM_NodeArrivalRateMultiType {
   }
 
   def jsonStringFlattten(gMotifInfo: ListBuffer[eType]): String = {
-    return "" +  "\"m0\":[" + gMotifInfo.slice(0,3).mkString(",") + "]," +
+    "" +  "\"m0\":[" + gMotifInfo.slice(0,3).mkString(",") + "]," +
              "\"m1\":[" + gMotifInfo.slice(3,4).mkString(",") + "],"+
              "\"m2\":[" + gMotifInfo.slice(4,5).mkString(",") + "]," +
              "\"m3\":[" + gMotifInfo.slice(5,6).mkString(",") + "],"+
@@ -707,7 +747,7 @@ object STM_NodeArrivalRateMultiType {
       else
         jsonstr.append("\""+key + i+ "\":[" + gMotifInfo(i).mkString(",") + "],")
     }
-    return jsonstr.toString()
+    jsonstr.toString()
   }
 
   def jsonStringLong(gOffsetInfo: ListBuffer[List[Long]],key:String="m"): String = {
@@ -719,7 +759,7 @@ object STM_NodeArrivalRateMultiType {
       else
         jsonstr.append("\""+key + i + "\":[" + gOffsetInfo(i).mkString(",") + "],")
     }
-    return jsonstr.toString()
+    jsonstr.toString()
   }
   def jsonStringDouble(gMotifOrbitIndInfo: ListBuffer[List[Double]],key:String="m"): String = {
 
@@ -730,7 +770,7 @@ object STM_NodeArrivalRateMultiType {
       else
         jsonstr.append("\""+key + i + "\":[" + gMotifOrbitIndInfo(i).mkString(",") + "],")
     }
-    return jsonstr.toString()
+    jsonstr.toString()
   }
     def complete_STM(
       gDebug: Boolean,
@@ -821,13 +861,32 @@ object STM_NodeArrivalRateMultiType {
       }
       gVertexITeMFreqFWr.flush()
 
+      // output vertex orbit frequency
+      for((vid,item_freq) <- gVertex_Orbit_Freq)
+      {
+        gVertexOrbitFreqFWr.print(vid)
+        /*
+         *
+         * get vertex - ITeM frequency
+         * [v_id->[item_id->frequency]]
+         */
+        for(i<-0 to 28)
+        {
+          //verte item freq
+          val vif = item_freq.getOrElse(i,0)
+          gVertexOrbitFreqFWr.print(","+vif)
+        }
+        gVertexOrbitFreqFWr.println()
+      }
+      gVertexOrbitFreqFWr.flush()
+
     /*
      * Output files
      */
     gITeMRateFWr.flush()
     gOffsetFWriter.flush()
 
-    return (normMotifProb, offsetProb)
+    (normMotifProb, offsetProb)
   }
 
   /*
@@ -1151,6 +1210,7 @@ object STM_NodeArrivalRateMultiType {
             numReusedNodes = numReusedNodes + 1
 
         }
+        //update vertex item frequency
         updateITemFreq(motif_name,node_ids,numReusedNodes)
         local_reuse_node_info = local_reuse_node_info +
           (numReusedNodes ->
@@ -1164,6 +1224,18 @@ object STM_NodeArrivalRateMultiType {
       .treeReduce((m1, m2) => {
         m1 |+| m2
       })
+
+    //update vertex orbit frequency
+    val vertex_orbit_freq :RDD[(Int,Array[Int])]= sim_e_vpairs.flatMap(v=>{
+      Iterator((v,Array(0)),(v,Array(1)))
+      // to fix: we should not have two orbits for simultanious mutli-edges
+    })
+    //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. 0,1,2
+    val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+    =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+
+    gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
+
 
     val local_motif_info = reuse_node_info.values.toList
     gMotifAllProb_IndividualFWr.println("sim_e", local_motif_info)
@@ -1357,7 +1429,29 @@ object STM_NodeArrivalRateMultiType {
         val total_multi_edges =
           multi_edges_info.map(e => e._2._1.size - 1).sum().toInt
         val multi_edges_to_remove =
-          multi_edges_info.flatMap(mi => mi._2._1 - mi._2._2)
+          multi_edges_info.flatMap(mi => mi._2._1 - mi._2._2).cache()
+
+        print("multi_edges_to_remove size is " + multi_edges_to_remove.count())
+        //update vertex orbit frequency
+        //update vertex orbit frequeyncy.i some of the code is common. make method
+        val a = multi_edges_to_remove.flatMap(e=>Iterator((e._1,1),(e._3,1)))
+        println("a is " + a.count())
+        val vertex_orbit_freq :RDD[(Int,Array[Int])] = multi_edges_to_remove.flatMap(e=>{
+          Iterator((e._1,Array(5)),
+            (e._3,Array(6)))
+        }).cache()
+//        multi_edges_to_remove.flatMap(e
+//        =>Iterator((e._1,Array(gMotifNameToOrbitKeys.get(motifName).get(1))),
+//            (e._3,Array(gMotifNameToOrbitKeys.get(motifName).get(2))))
+//          // to fix: we should not have two orbits for simultanious mutli-edges
+//        )
+        //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. -1,1,2
+        val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+        =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+
+        gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
+
+
 
         /*
          * write multi-edge nodes to a file
@@ -1375,6 +1469,7 @@ object STM_NodeArrivalRateMultiType {
               ".txt"
           )
         )
+
         multi_edge_nodes.foreach(v => multi_edge_node_file.println(v))
         multi_edge_node_file.flush()
         // get node ids for item frequency update
@@ -1440,7 +1535,7 @@ object STM_NodeArrivalRateMultiType {
   def findSelfLoop(g_base: GraphFrame,
                    motifName: String,
                    gETypes: Array[Int],
-                   filterNodeIDs:Array[vertexId]): GraphFrame = {
+                   filterNodeIDs:Array[vertexId],max_cores:Int): GraphFrame = {
 
     val spark = SparkSession.builder().getOrCreate()
     val g = if(filterNodeIDs.length > 0 ) g_base.filterVertices( col("id").isin(filterNodeIDs: _*))
@@ -1487,6 +1582,18 @@ object STM_NodeArrivalRateMultiType {
 
       updateITemFreq(motifName,new_node_ids,0)
       updateITemFreq(motifName,reuse_node_ids,1)
+
+      //update vertex orbit frequency
+      val vertex_orbit_freq :RDD[(Int,Array[Int])]= selctedMotifEdges.rdd.map(e=>{
+        (get_row_src(e),Array(gMotifNameToOrbitKeys.get(motifName).get(1)))
+      })
+      //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. 0,1,2
+      val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+      =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+
+      gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
+
+
 
       // edge offset is not relevent here
       val total_self_loop_cnt = selctedMotifEdges.count()
@@ -1876,6 +1983,22 @@ object STM_NodeArrivalRateMultiType {
       gOrbtVtxAssoFWr.flush()
     }
 
+  def updateOrbitFreq(motifName: String, orbit_vertex: RDD[(vertexId, Array[vertexId])],max_cores:Int) :Unit =
+    {
+      println("motif name is " + motifName)
+      val vertex_orbit_freq = orbit_vertex.map(ov=>{
+        val size1_arr = ov._2
+        (size1_arr(0),Array(gMotifNameToOrbitKeys.get(motifName).get(ov._1)))
+      })
+      //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. 0,1,2
+      val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+      =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+      //print("Before global " + gVertex_Orbit_Freq)
+      //print("Before local" + vertex_orbit_freq_map)
+      gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
+      //print("After global " + gVertex_Orbit_Freq)
+    }
+
   def writeOrbitIndependence_VertexAssociation(true_mis_set_rdd: RDD[String],
                                                num_nonoverlapping_m: Long,
                                                motifName: String, max_cores:Int): Unit = {
@@ -1907,6 +2030,19 @@ object STM_NodeArrivalRateMultiType {
         .map(edge => edge._1)
         .distinct()
         .count
+      val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
+      val orbit_vertex: RDD[(Int, Array[Int])] = motif_edges
+        .flatMap(edge_arr => {
+          var ov_frm_this_edge = new ArrayBuffer[(Int,Array[Int])]()
+          //howeer many edges we have, take the first node. since it is a symmetic motif
+          for(e <- edge_arr)
+            ov_frm_this_edge += ((1,Array(e.split("_")(0).toInt)))
+          ov_frm_this_edge
+        })
+        .distinct()
+
+      updateOrbitFreq(motifName,orbit_vertex,max_cores)
+
       gOrbit_Ind += List(numVOrbit.toDouble / num_nonoverlapping_m)
     } else if (motifName.equalsIgnoreCase("triad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
@@ -1921,9 +2057,11 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
 
-      val orbit_vertex_asso : RDD[(Int, Array[Int])] = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
-//We need to convert it to list and then get a map of frequency to write vertex_orbit_freqency
+      val orbit_vertex_asso   = orbit_vertex.reduceByKey((x, y)
+      => x ++ y,max_cores).map(ov=>(ov._1, ov._2.toSet)).collect
 
+      //We need to convert it to list and then get a map of frequency to write vertex_orbit_freqency
+      updateOrbitFreq(motifName,orbit_vertex,max_cores)
 
       write_orbit_association(orbit_vertex_asso,motifName)
 
@@ -1944,7 +2082,7 @@ object STM_NodeArrivalRateMultiType {
                motifName.equalsIgnoreCase("indiad") ||
                motifName.equalsIgnoreCase("twoloop")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_vertex : RDD[(Int, Set[Int])] =
+      val orbit_vertex : RDD[(Int, Array[Int])] =
         if(motifName.equalsIgnoreCase("outdiad"))
         {
           motif_edges
@@ -1952,8 +2090,8 @@ object STM_NodeArrivalRateMultiType {
               val e1 = edge_arr(0).split("_")
               val e2 = edge_arr(1).split("_")
               //there are two orbits, a and b|c
-              Iterator((1, Set(e1(0).toInt)),
-                (2, Set(e1(2).toInt , e2(2).toInt)))
+              Iterator((1, Array(e1(0).toInt)),
+                (2, Array(e1(2).toInt , e2(2).toInt)))
             })
             .distinct()
         } else if(motifName.equalsIgnoreCase("indiad"))
@@ -1963,8 +2101,8 @@ object STM_NodeArrivalRateMultiType {
                 val e1 = edge_arr(0).split("_")
                 val e2 = edge_arr(1).split("_")
                 //there are two orbits, a and b|c
-                Iterator((1, Set(e1(2).toInt)),
-                  (2, Set(e1(0).toInt , e2(0).toInt)))
+                Iterator((1, Array(e1(2).toInt)),
+                  (2, Array(e1(0).toInt , e2(0).toInt)))
               })
               .distinct()
           }else // twoloop
@@ -1974,13 +2112,17 @@ object STM_NodeArrivalRateMultiType {
                 val e1 = edge_arr(0).split("_")
                 val e2 = edge_arr(1).split("_")
                 //there are two orbits, b and a|c
-                Iterator((1, Set(e1(2).toInt)),
-                  (1, Set(e1(0).toInt , e2(2).toInt)))
+                Iterator((1, Array(e1(2).toInt)),
+                  (1, Array(e1(0).toInt , e2(2).toInt)))
               })
               .distinct()
           }
 
-      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+      updateOrbitFreq(motifName,orbit_vertex,max_cores)
+
+
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).map(ov
+      =>(ov._1,ov._2.toSet)).collect()
       write_orbit_association(orbit_vertex_asso,motifName)
 
       val orbit_count: Map[Int, Int]  = orbit_vertex_asso
@@ -1993,17 +2135,21 @@ object STM_NodeArrivalRateMultiType {
       gOrbit_Ind += orbit_independence
     } else if (motifName.equalsIgnoreCase("inoutdiad")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
-      val orbit_vertex : RDD[(Int, Set[Int])] = motif_edges
+      val orbit_vertex : RDD[(Int, Array[Int])] = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           //there are three orbits, a,b,c
-          Iterator((1, Set(e1(0).toInt)),
-            (2, Set(e1(2).toInt)),
-            (3, Set(e2(2).toInt)))
+          Iterator((1, Array(e1(0).toInt)),
+            (2, Array(e1(2).toInt)),
+            (3, Array(e2(2).toInt)))
         })
         .distinct()
-      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+
+      updateOrbitFreq(motifName,orbit_vertex,max_cores)
+
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).map(ov
+      =>(ov._1,ov._2.toSet)).collect()
       write_orbit_association(orbit_vertex_asso,motifName)
       val orbit_count: Map[Int, Int] = orbit_vertex_asso
         .map(x => (x._1, x._2.size))
@@ -2019,21 +2165,24 @@ object STM_NodeArrivalRateMultiType {
                motifName.equalsIgnoreCase("outstar")) {
       val motif_edges = true_mis_set_rdd.map(motif => motif.split('|'))
 
-      val orbit_vertex : RDD[(Int, Set[Int])] = motif_edges
+      val orbit_vertex : RDD[(Int, Array[Int])] = motif_edges
         .flatMap(edge_arr => {
           val e1 = edge_arr(0).split("_")
           val e2 = edge_arr(1).split("_")
           val e3 = edge_arr(2).split("_")
           //there are two orbits, a and b|c|d
           Iterator(
-            (1, Set(e1(0).toInt)),
-            (2, Set(e1(2).toInt)),
-            (2, Set(e2(2).toInt)),
-            (2, Set(e3(2).toInt))
+            (1, Array(e1(0).toInt)),
+            (2, Array(e1(2).toInt)),
+            (2, Array(e2(2).toInt)),
+            (2, Array(e3(2).toInt))
           )
         })
         .distinct()
-      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).collect
+
+      updateOrbitFreq(motifName,orbit_vertex,max_cores)
+      val orbit_vertex_asso = orbit_vertex.reduceByKey((x, y) => x ++ y,max_cores).map(ov
+      =>(ov._1,ov._2.toSet)).collect()
       write_orbit_association(orbit_vertex_asso,motifName)
 
       val orbit_count: Map[Int, Int] = orbit_vertex_asso
@@ -2068,7 +2217,7 @@ object STM_NodeArrivalRateMultiType {
     et2: eType,
     et3: eType,
     et4: eType) : Dataset[Row] ={
-   return graph.find(gAtomicMotifs(motifName))
+   graph.find(gAtomicMotifs(motifName))
      .filter(
               (col("a") =!= col("b")) &&
               (col("b") =!= col("c")) &&
@@ -2542,7 +2691,7 @@ object STM_NodeArrivalRateMultiType {
     et1: eType,
     et2: eType,
     et3: eType):Dataset[Row] = {
-    return newGraph.find(gAtomicMotifs(motifName))
+    newGraph.find(gAtomicMotifs(motifName))
       .filter("a != b")
       .filter("b != c")
       .filter("e1.type = " + gETypes(et1))
@@ -2556,9 +2705,9 @@ object STM_NodeArrivalRateMultiType {
                       filterNodeIDs: Array[vertexId],
                       num_motif_nodes: Int): Dataset[Row] = {
     if (filterNodeIDs.length == 0)
-      return valueSoFar
+      valueSoFar
     else
-      return valueSoFar.filter(
+      valueSoFar.filter(
           col("a.id").isin(filterNodeIDs: _*)
             && col("b.id").isin(filterNodeIDs: _*)
             && col("c.id").isin(filterNodeIDs: _*)
@@ -2569,9 +2718,9 @@ object STM_NodeArrivalRateMultiType {
     filterNodeIDs: Array[vertexId],
     num_motif_nodes: Int): Dataset[Row] = {
     if (filterNodeIDs.length == 0)
-      return valueSoFar
+      valueSoFar
     else
-      return if (num_motif_nodes == 4)
+      if (num_motif_nodes == 4)
                valueSoFar.filter(
                                   col("a.id").isin(filterNodeIDs: _*)
                                   && col("b.id").isin(filterNodeIDs: _*)
@@ -2590,9 +2739,9 @@ object STM_NodeArrivalRateMultiType {
                       filterNodeIDs: Array[vertexId],
                       num_motif_nodes: Int): Dataset[Row] = {
     if (filterNodeIDs.length == 0)
-      return valueSoFar
+      valueSoFar
     else
-      return if (num_motif_nodes == 3)
+      if (num_motif_nodes == 3)
         valueSoFar.filter(
           col("a.id").isin(filterNodeIDs: _*)
             && col("b.id").isin(filterNodeIDs: _*)
@@ -2932,7 +3081,7 @@ object STM_NodeArrivalRateMultiType {
 
   def base2EFile(tmpG: GraphFrame, gETypes: Array[vertexId], et1: eType, et2: eType,
                  motifName:String): Dataset[Row] = {
-   return tmpG
+   tmpG
       .find(gAtomicMotifs(motifName))
       .filter("a != b")
       .filter("e1.type = " + gETypes(et1))
@@ -3204,7 +3353,7 @@ object STM_NodeArrivalRateMultiType {
   def findResidualEdg(g_base: GraphFrame,
                       motifName: String,
                       gETypes: Array[Int],
-                      filterNodeIDs: Array[vertexId]): GraphFrame = {
+                      filterNodeIDs: Array[vertexId],max_cores:Int): GraphFrame = {
 
     val g = if(filterNodeIDs.length > 0 ) g_base.filterVertices( col("id").isin(filterNodeIDs: _*))
     else g_base
@@ -3316,6 +3465,17 @@ object STM_NodeArrivalRateMultiType {
           else true
         }).persist()
 
+      //update vertex orbit frequency
+      val tmprdd = selctedMotifEdges.rdd.cache()
+      val vertex_orbit_freq :RDD[(Int,Array[Int])]= tmprdd.flatMap(e=>{
+        Iterator((get_row_src(e),Array(27)),
+          (get_row_dst(e),Array(28)))
+      })
+      //get orbit map from motif name, then get orbit key based on the oribin position in this motif i.e. 0,1,2
+      val vertex_orbit_freq_map : Map[Int,Map[Int,Int]] = vertex_orbit_freq.reduceByKey((x, y) => x ++ y,max_cores).map(vo
+      =>(vo._1, vo._2.toList.groupBy(identity).mapValues(_.size))).collect.toMap
+
+      gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
 
 
       // update vertex item frequency
