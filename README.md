@@ -13,9 +13,11 @@ Please contact Sumit.Purohit@pnnl.gov for any question.
 git clone https://github.com/temporal-graphs/TAGBuilder.git
 
 cd TAGBuilder/code/STMBase
+
 mvn clean package
 
 cd TAGBuilder/code/TAGBuilder
+
 mvn clean package install
 
 git clone https://github.com/temporal-graphs/STM.git
