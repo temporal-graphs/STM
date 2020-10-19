@@ -14,7 +14,7 @@ git clone https://github.com/temporal-graphs/TAGBuilder.git
 
 cd TAGBuilder/code/STMBase
 
-mvn clean package
+mvn clean package install
 
 cd TAGBuilder/code/TAGBuilder
 
