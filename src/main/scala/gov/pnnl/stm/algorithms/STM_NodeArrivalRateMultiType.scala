@@ -30,6 +30,7 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
 import gov.pnnl.datamodel.TAG
+import gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType.{gVertex_ITeM_Freq, gVertex_Orbit_Freq}
 import org.apache.spark.graphx.VertexId
 
 /**
@@ -55,7 +56,7 @@ object STM_NodeArrivalRateMultiType {
 
   //ALL THESE FILES ARE GETTING CREATED IN EACH EXECUTOR ALSO
   val gITeMRateFile = new File(
-    t1 + "_ITeM_Rate" + prefix_annotation + ".txt"
+    t1 + "_ITeM_RateAvg" + prefix_annotation + ".txt"
   )
   val gITeMRateFWr = new PrintWriter(gITeMRateFile)
   val gITeM_FreqFile = new File(
@@ -79,12 +80,13 @@ object STM_NodeArrivalRateMultiType {
   val gMotifAllProb_IndividualFWr = new PrintWriter(
     gMotifAllProbFile_Individual
   )
-  val gOffsetFile = new File(t1 + "_Offset_Rate" + prefix_annotation + ".txt")
+  val gOffsetFile = new File(t1 + "_Offset_RateAvg" + prefix_annotation + ".txt")
   val gOffsetFWriter = new PrintWriter(gOffsetFile)
   val gOffsetAllFile = new File(
     t1 + "_Offset_AbsCount" + prefix_annotation + ".txt"
   )
   val gOffsetAllFWriter = new PrintWriter(gOffsetAllFile)
+  gOffsetAllFWriter.println("[")
   val gVertexBirthFile = new File(
     t1 + "_VertexBirth" + prefix_annotation + ".txt"
   )
@@ -147,7 +149,7 @@ object STM_NodeArrivalRateMultiType {
                                             new FileWriter(gWindowSizeFile, true)
                                           )
 
-  val gDebug = false
+  val gDebug = true
   val gHigherGOut = true
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
@@ -326,6 +328,8 @@ object STM_NodeArrivalRateMultiType {
     //write average out degree file and motif count json file
     gITeM_FreqFWr.println("]")
     gITeM_FreqFWr.flush()
+    gOffsetAllFWriter.println("]")
+    gOffsetAllFWriter.flush()
     gMotifAllProb_IndividualFWr.flush()
     writeAvgOutDegFile(avg_outdeg_file, local_res._3)
 
@@ -772,7 +776,51 @@ object STM_NodeArrivalRateMultiType {
     }
     jsonstr.toString()
   }
-    def complete_STM(
+
+  def write_vertex_ITeM_Orbti_Frequency(gVertex_ITeM_Freq: Map[vertexId, Map[vertexId, vertexId]],
+                                        gVertex_Orbit_Freq: Map[vertexId, Map[vertexId, vertexId]],
+                                        itr: Int, w: Int) :Unit =
+    {
+      for((vid,item_freq) <- gVertex_ITeM_Freq)
+      {
+        gVertexITeMFreqFWr.print(itr+","+w+","+vid)
+        /*
+         *
+         * get vertex - ITeM frequency
+         * [v_id->[item_id->frequency]]
+         */
+        for(i<-0 to 51)
+        {
+          //verte item freq
+          val vif = item_freq.getOrElse(i,0)
+          gVertexITeMFreqFWr.print(","+vif)
+        }
+        gVertexITeMFreqFWr.println()
+      }
+      gVertexITeMFreqFWr.flush()
+
+      // output vertex orbit frequency
+      for((vid,item_freq) <- gVertex_Orbit_Freq)
+      {
+        gVertexOrbitFreqFWr.print(itr+","+w+","+vid)
+        /*
+         *
+         * get vertex - ITeM frequency
+         * [v_id->[item_id->frequency]]
+         */
+        for(i<-0 to 28)
+        {
+          //verte item freq
+          val vif = item_freq.getOrElse(i,0)
+          gVertexOrbitFreqFWr.print(","+vif)
+        }
+        gVertexOrbitFreqFWr.println()
+      }
+      gVertexOrbitFreqFWr.flush()
+
+    }
+
+  def complete_STM(
       gDebug: Boolean,
       gETypes: Array[Int],
       initial_simple_tag: SimpleTAGRDD,filterNodeIDs:Array[vertexId],k_top:Int,max_cores:Int
@@ -797,6 +845,11 @@ object STM_NodeArrivalRateMultiType {
       println("duration in milliseconds", duration)
     }
 
+      // Header line of few files
+      gITeM_IndFWr.println(1+","+1)
+      gVtxIndFWr.println(1+","+1)
+      gMotifVtxAssoFWr.println(1+","+1)
+      gOrbtVtxAssoFWr.println(1+","+1)
     try {
       val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs,k_top,max_cores)
       if (gDebug) {
@@ -843,42 +896,7 @@ object STM_NodeArrivalRateMultiType {
       gOffsetInfo.flatMap(f0 => f0.map(f1 => f1))
     gOffsetFWriter.println(offsetProb.mkString("\n"))
 
-      for((vid,item_freq) <- gVertex_ITeM_Freq)
-      {
-        gVertexITeMFreqFWr.print(vid)
-        /*
-         *
-         * get vertex - ITeM frequency
-         * [v_id->[item_id->frequency]]
-         */
-     for(i<-0 to 51)
-          {
-            //verte item freq
-            val vif = item_freq.getOrElse(i,0)
-            gVertexITeMFreqFWr.print(","+vif)
-          }
-        gVertexITeMFreqFWr.println()
-      }
-      gVertexITeMFreqFWr.flush()
-
-      // output vertex orbit frequency
-      for((vid,item_freq) <- gVertex_Orbit_Freq)
-      {
-        gVertexOrbitFreqFWr.print(vid)
-        /*
-         *
-         * get vertex - ITeM frequency
-         * [v_id->[item_id->frequency]]
-         */
-        for(i<-0 to 28)
-        {
-          //verte item freq
-          val vif = item_freq.getOrElse(i,0)
-          gVertexOrbitFreqFWr.print(","+vif)
-        }
-        gVertexOrbitFreqFWr.println()
-      }
-      gVertexOrbitFreqFWr.flush()
+      write_vertex_ITeM_Orbti_Frequency(gVertex_ITeM_Freq, gVertex_Orbit_Freq, 0,0)
 
     /*
      * Output files
@@ -962,14 +980,18 @@ object STM_NodeArrivalRateMultiType {
     gWindowSizeFWriter.flush()
     var gMotifInfo_global = ListBuffer.empty[Double]
     var gOffsetInfo_global = ListBuffer.empty[Long]
-
+    // Header line of few files
+    gITeM_IndFWr.println(num_iterations+","+num_windows)
+    gVtxIndFWr.println(num_iterations+","+num_windows)
+    gMotifVtxAssoFWr.println(num_iterations+","+num_windows)
+    gOrbtVtxAssoFWr.println(num_iterations+","+num_windows)
     for (itr <- 0 to num_iterations - 1) {
       currItrID = itr
       var gMotifInfo_itr_local = ListBuffer.empty[Double]
       var gOffsetInfo_itr_local = ListBuffer.empty[Long]
       var num_w_in_sampling = 0
 
-      for (i <- 0 to num_windows - 4) {
+      for (i <- 0 to num_windows -1) {
         currWinID = i
         val t0 = System.nanoTime()
         val rn = scala.util.Random
@@ -977,11 +999,11 @@ object STM_NodeArrivalRateMultiType {
           {
             myprintln(" i is " + i)
             gVtxIndFWr.println(
-              "num_v_nonverlapping,num_v_max,v_independence_" + itr + "_" + i
+              "#num_v_nonverlapping,num_v_max,v_independence_" + itr + "_" + i
             )
             gITeM_IndFWr.println(
-              "num_total_motif,num_ind_motif," +
-                "motif_independence_" + itr + "_" + i
+              "#num_total_motif,num_ind_motif," +
+                "motif_independence," + itr + "," + i
             )
             num_w_in_sampling = num_w_in_sampling + 1
 
@@ -1019,20 +1041,25 @@ object STM_NodeArrivalRateMultiType {
             /*
              * Write current GMotifInfo to the "All" file
              */
-            gITeM_FreqFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonString(gMotifInfo) + "}")
+            val CLOSING_BRACKET = if(i == num_windows -1) "}" else "},"
+            gITeM_FreqFWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonString(gMotifInfo) + CLOSING_BRACKET)
             //gMotifAllProbFWr.println(
               //itr + "," + i + "," + gMotifInfo.flatten.mkString(",")
             //)
             gITeM_FreqFWr.flush()
-            gOffsetAllFWriter.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringLong(gOffsetInfo,"off") + "}")
+            gOffsetAllFWriter.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringLong(gOffsetInfo,"off") + CLOSING_BRACKET)
             //gOffsetAllFWriter.println(
               //itr + "," + i + "," + gOffsetInfo.flatten.mkString(",")
             //)
             gOffsetAllFWriter.flush()
 
             //gMotifOrbitAllFWr.println(itr + "," + i + "," + gMotifOrbitInfo.flatten.mkString(","))
-            gOrbit_Ind_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gOrbit_Ind,"orb") + "}")
+            gOrbit_Ind_FWr.println("{ \"itr\":" +  itr + ",\"w\":" + i + "," + jsonStringDouble(gOrbit_Ind,"orb") + CLOSING_BRACKET)
             gOrbit_Ind_FWr.flush()
+
+            write_vertex_ITeM_Orbti_Frequency(gVertex_ITeM_Freq, gVertex_Orbit_Freq, itr, i)
+            gVertex_ITeM_Freq = scala.collection.Map.empty
+            gVertex_Orbit_Freq = scala.collection.Map.empty
 
             // gMotifInfo gOffsetInfo has counts for local graph
             if (gMotifInfo_itr_local.isEmpty) {
