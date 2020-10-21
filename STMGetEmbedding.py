@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[211]:
 
 
 import pandas as pd
@@ -13,6 +13,7 @@ import glob
 import json
 import numpy as np
 import sys
+from sklearn import preprocessing
 
 
 # In[2]:
@@ -364,6 +365,14 @@ def main():
     node_emb.columns = range(len(node_emb.columns))
     node_emb.to_csv(outpath+"node.emb",header=False)
     
+    # normalized node embeddings
+    min_max_scaler = preprocessing.MinMaxScaler()
+    np_scaled = min_max_scaler.fit_transform(node_emb)
+    df_normalized = pd.DataFrame(np_scaled, columns = node_emb.columns, index = node_emb.index)
+    df_normalized.iloc[:,0] = node_emb.iloc[:,0] # it is itr id
+    df_normalized.iloc[:,1] = node_emb.iloc[:,1] # it is the window id
+    df_normalized.to_csv(outpath+"node_norm.emb",header=False)
+    
     #node_emb_mean = node_emb.groupby(node_emb.columns[1]).mean() #col id 1 has node label
     node_emb_mean = node_emb.groupby(node_emb.index).mean() #index name is the v label
     node_emb_mean.to_csv(outpath+"node_mean.emb",header=False)
@@ -410,7 +419,7 @@ if __name__ == "__main__":
 #grp
 
 
-# In[207]:
+# In[212]:
 
 
 # inputpath = "D:/localcode/STM/tmp_emb_input/"
@@ -425,10 +434,27 @@ if __name__ == "__main__":
 # #node_emb.iloc[:,1] = node_emb.iloc[:,1].apply(lambda vid: node_map[str(int(vid))])
 # node_emb = node_emb.rename(index=node_map)
 # node_emb.columns = range(len(node_emb.columns))
-# node_emb.to_csv(outpath+"node.emb",header=False)
+# #node_emb.to_csv(outpath+"node.emb",header=False)
 
 
-# In[209]:
+# In[219]:
+
+
+# min_max_scaler = preprocessing.MinMaxScaler()
+# np_scaled = min_max_scaler.fit_transform(node_emb)
+# df_normalized = pd.DataFrame(np_scaled, columns = node_emb.columns, index = node_emb.index)
+# df_normalized
+
+
+# In[222]:
+
+
+# df_normalized.iloc[:,0] = node_emb.iloc[:,0]
+# df_normalized.iloc[:,1] = node_emb.iloc[:,1]
+# df_normalized
+
+
+# In[213]:
 
 
 #node_emb
