@@ -3473,7 +3473,6 @@ object STM_NodeArrivalRateMultiType {
     try {
       moveFileInner(gITeMRateFile)
       moveFileInner(gITeM_FreqFile)
-      moveFileInner(gMotifAllProbFile_Individual)
       moveFileInner(gOffsetFile)
       moveFileInner(gOffsetAllFile)
       moveFileInner(gVertexBirthFile)
