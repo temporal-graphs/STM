@@ -73,13 +73,6 @@ object STM_NodeArrivalRateMultiType {
   )
   val gOrbit_Ind_FWr = new PrintWriter( gOrbitFile )
 
-  val gMotifAllProbFile_Individual = new File(
-    t1 + "_MotifProb_AbsCount_Individual" +
-      prefix_annotation + ".txt"
-  )
-  val gMotifAllProb_IndividualFWr = new PrintWriter(
-    gMotifAllProbFile_Individual
-  )
   val gOffsetFile = new File(t1 + "_Offset_RateAvg" + prefix_annotation + ".txt")
   val gOffsetFWriter = new PrintWriter(gOffsetFile)
   val gOffsetAllFile = new File(
@@ -330,7 +323,6 @@ object STM_NodeArrivalRateMultiType {
     gITeM_FreqFWr.flush()
     gOffsetAllFWriter.println("]")
     gOffsetAllFWriter.flush()
-    gMotifAllProb_IndividualFWr.flush()
     writeAvgOutDegFile(avg_outdeg_file, local_res._3)
 
     try {
@@ -553,7 +545,6 @@ object STM_NodeArrivalRateMultiType {
     write_vertex_independence(iso_edge_cnt * 2, iso_edge_cnt * 2)
     write_motif_independence(iso_edge_cnt, iso_edge_cnt)
 
-    gMotifAllProb_IndividualFWr.println("iso_e", iso_edge_cnt)
     gMotifInfo += List(iso_edge_cnt.toInt)
     //gOffsetInfo += List(0L)
     GraphFrame(newv, newe)
@@ -879,7 +870,6 @@ object STM_NodeArrivalRateMultiType {
     gOrbit_Ind_FWr.println("{ \"itr\":" +  0 + ",\"w\":" + 0 + "," + jsonStringDouble(gOrbit_Ind,"orb") + "}")
     gOrbit_Ind_FWr.flush()
     gOffsetAllFWriter.flush()
-    gMotifAllProb_IndividualFWr.flush()
 
     /*
      * Generate Output
@@ -1176,10 +1166,7 @@ object STM_NodeArrivalRateMultiType {
     val num_motif_edges = 1
     try {
       if (sim_e.isEmpty) {
-        gMotifAllProb_IndividualFWr.println(
-          "sim_e",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
+
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
 
         //write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
@@ -1196,10 +1183,7 @@ object STM_NodeArrivalRateMultiType {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         myprintln("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWr.println(
-          "sim_e",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
+
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         write_vertex_independence(sim_e_num_v, sim_e_max_num_v)
         write_motif_independence(0,0)
@@ -1265,7 +1249,6 @@ object STM_NodeArrivalRateMultiType {
 
 
     val local_motif_info = reuse_node_info.values.toList
-    gMotifAllProb_IndividualFWr.println("sim_e", local_motif_info)
     gMotifInfo += local_motif_info
     myprintln(gMotifInfo.toString())
 
@@ -1346,7 +1329,6 @@ object STM_NodeArrivalRateMultiType {
         // https://stackoverflow.com/questions/32707620/how-to-check-if-spark-dataframe-is-empty
         try {
           if (selctedMotifEdges.head(1).isEmpty) {
-            gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
             gOffsetInfo += List(-1L,-1L,-1L)
             write_vertex_independence(0,0)
@@ -1359,7 +1341,6 @@ object STM_NodeArrivalRateMultiType {
             val sw = new StringWriter
             e.printStackTrace(new PrintWriter(sw))
             myprintln("\n Exception is  " + sw.toString())
-            gMotifAllProb_IndividualFWr.println("multi e", List(0))
             gMotifInfo += List(0)
             gOffsetInfo += List(-1L,-1L,-1L)
             write_vertex_independence(0,0)
@@ -1489,16 +1470,7 @@ object STM_NodeArrivalRateMultiType {
           })
           .distinct(max_cores)
           .collect()
-        val multi_edge_node_file = new PrintWriter(
-          new File(
-            t1 + "Motif_Vertex_Association_Multi_Edge" + prefix_annotation +
-              "" +
-              ".txt"
-          )
-        )
 
-        multi_edge_nodes.foreach(v => multi_edge_node_file.println(v))
-        multi_edge_node_file.flush()
         // get node ids for item frequency update
         val node_ids = multi_edge_nodes.toList
         updateITemFreq(motifName,node_ids,2)
@@ -1517,10 +1489,6 @@ object STM_NodeArrivalRateMultiType {
         // For reuse/-max_cores_node_info: For every motif, both the nodes are reused for the 2nd edge
         // So the resuling map it (2-> number of multi edges)
         val reuse_node_info: Map[Int, Int] = Map(2 -> total_multi_edges)
-        gMotifAllProb_IndividualFWr.println(
-          "multi e",
-          reuse_node_info.values.toList
-        )
         gMotifInfo += reuse_node_info.values.toList
 
         //TODO: Motif association for Non-Simu Multi-edges
@@ -1665,11 +1633,6 @@ object STM_NodeArrivalRateMultiType {
         .distinct
         .toDF("id", "name")
       val newGraph = GraphFrame(newVRDD, newEDF)
-      gMotifAllProb_IndividualFWr.println(
-        "self loop",
-        new_self_loop_cnt,
-        reuse_self_loop_cnt
-      )
       gMotifInfo += List(new_self_loop_cnt, reuse_self_loop_cnt)
       // unpersist old graph
       tmpG.unpersist(true)
@@ -2362,10 +2325,6 @@ object STM_NodeArrivalRateMultiType {
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {
       if (selctedMotifEdges_local_nonoverlap.head(1).isEmpty) {
-        gMotifAllProb_IndividualFWr.println(
-          "4env ",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
@@ -2383,10 +2342,6 @@ object STM_NodeArrivalRateMultiType {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         myprintln("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWr.println(
-          "4env ",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
@@ -2436,10 +2391,6 @@ object STM_NodeArrivalRateMultiType {
       motifName
     )
 
-    gMotifAllProb_IndividualFWr.println(
-      "4env ",
-      reuse_node_info.values.toList
-    )
     gMotifInfo += reuse_node_info.values.toList
 
     write_motif_independence(num_overlapping_m, num_nonoverlapping_m)
@@ -2904,10 +2855,6 @@ object STM_NodeArrivalRateMultiType {
     // get unique motif
     try {
       if (selctedMotifEdges_local_nonoverlap.head(1).isEmpty) {
-        gMotifAllProb_IndividualFWr.println(
-          "3env",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
         write_vertex_independence(0,0)
@@ -2928,10 +2875,6 @@ object STM_NodeArrivalRateMultiType {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         myprintln("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWr.println(
-          "3env",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1L }
         write_vertex_independence(0,0)
@@ -3015,8 +2958,7 @@ object STM_NodeArrivalRateMultiType {
       .map {
         case (x, y) => x + y
       }
-    gMotifAllProb_IndividualFWr.println("3env ", local_res)
-    gMotifInfo += local_res
+   gMotifInfo += local_res
 
     write_motif_independence(num_overlap_motifs, num_nonoverlap_motifs)
     write_vertex_independence(
@@ -3166,10 +3108,6 @@ object STM_NodeArrivalRateMultiType {
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {
       if (selctedMotifEdges_local_nonoverlap.head(1).isEmpty) {
-        gMotifAllProb_IndividualFWr.println(
-          "2env",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
@@ -3191,10 +3129,7 @@ object STM_NodeArrivalRateMultiType {
         val sw = new StringWriter
         e.printStackTrace(new PrintWriter(sw))
         myprintln("\n Exception is  " + sw.toString())
-        gMotifAllProb_IndividualFWr.println(
-          "2env",
-          List.fill(num_motif_nodes + 1) { 0 }
-        )
+
         gMotifInfo += List.fill(num_motif_nodes + 1) { 0 }
         gOffsetInfo += List.fill(3*(num_motif_edges - 1)) { -1 }
         write_vertex_independence(0,0)
@@ -3263,10 +3198,6 @@ object STM_NodeArrivalRateMultiType {
         motifName
       )
 
-    gMotifAllProb_IndividualFWr.println(
-      "2env",
-      reuse_node_info.values.toList
-    )
     gMotifInfo += reuse_node_info.values.toList
 
     myprintln("Writing motif ind in 2ENv")
@@ -3406,7 +3337,6 @@ object STM_NodeArrivalRateMultiType {
       val num_residual_edges = selctedMotifEdges.count()
       try {
         if (selctedMotifEdges.head(1).isEmpty) {
-          gMotifAllProb_IndividualFWr.println("redi e", List(0,0))
           gMotifInfo += List(0,0)
 
           // vertext INDE is always 1 as these are residual edgea and all the v will be distict
@@ -3422,7 +3352,6 @@ object STM_NodeArrivalRateMultiType {
           val sw = new StringWriter
           e.printStackTrace(new PrintWriter(sw))
           myprintln("\n Exception is  " + sw.toString())
-          gMotifAllProb_IndividualFWr.println("redi e", List(0,0))
           gMotifInfo += List(0,0)
           write_vertex_independence(0,0)
           write_motif_independence(0,0)
@@ -3517,9 +3446,7 @@ object STM_NodeArrivalRateMultiType {
       // not residual edge but a wedge
       val reused_node_cnt =
         (num_residual_edges - one_new_nodes_motif_cnt).toInt
-      gMotifAllProb_IndividualFWr.println(
-        List(one_new_nodes_motif_cnt, reused_node_cnt)
-      )
+
       gMotifInfo += List(one_new_nodes_motif_cnt, reused_node_cnt)
     }
     tmpG
