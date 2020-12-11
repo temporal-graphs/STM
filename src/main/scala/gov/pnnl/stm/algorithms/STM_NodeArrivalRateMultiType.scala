@@ -142,7 +142,7 @@ object STM_NodeArrivalRateMultiType {
                                             new FileWriter(gWindowSizeFile, true)
                                           )
 
-  val gDebug = true
+  val gDebug = false
   val gHigherGOut = true
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
@@ -242,9 +242,10 @@ object STM_NodeArrivalRateMultiType {
       .set("spark.driver.maxResultSize","30g").set("spark.local.dir","D:\\tmp\\")
     lazy val sparkSession = SparkSession
       .builder()
-      .appName("STM")
+      .appName("STM").master("local")
       .config(sparkConf)
       .getOrCreate()
+
 
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
