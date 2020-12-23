@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[211]:
+# In[1]:
 
 
 import pandas as pd
@@ -16,7 +16,7 @@ import sys
 from sklearn import preprocessing
 
 
-# In[2]:
+# In[24]:
 
 
 def get_emb_list_from_json_row(json_row):
@@ -29,7 +29,7 @@ def get_emb_list_from_json_row(json_row):
     return row
 
 
-# In[3]:
+# In[25]:
 
 
 # it returns a dictionary that tells for which iter,w,motif/orbitid => nuber of nodes
@@ -49,7 +49,7 @@ def get_num_v_association(filePath):
     return itr_w_dict
 
 
-# In[28]:
+# In[26]:
 
 
 def get_3rd_entry_ind(filePath):
@@ -62,16 +62,16 @@ def get_3rd_entry_ind(filePath):
                 # should improve
                 # #num_total_motif,num_ind_motif,motif_independence_0_0
                 larr = line.split(",")
-                curr_itr = larr[-2]
-                curr_w = larr[-1]
+                curr_itr = larr[-1].split("_")[-2]
+                curr_w = larr[-1].split("_")[-1]
                 continue
             larr = line.rstrip().split(",")
             if len(larr) == 2:
-                #first line
+                #first line that list total number of iterations and windows in this file
                 itr_w_dict['n_itr'] = larr[0]
                 itr_w_dict['n_w'] = larr[1]
             else:
-                key = "_".join([curr_itr,curr_w])
+                key = "_".join([str(curr_itr),str(curr_w)])
                 curr_list = itr_w_dict.get(key,[])
                 curr_list.append(float(larr[2]))
                 itr_w_dict[key] = curr_list
@@ -86,16 +86,7 @@ def get_3rd_entry_ind(filePath):
 
 
 
-# In[226]:
-
-
-a=[1,2,3,4]
-b=a.append(5)
-print(b)
-print(a[2:60])
-
-
-# In[5]:
+# In[27]:
 
 
 def initialize_local_dict(n_itr,n_w,size):
@@ -115,7 +106,7 @@ def update_global_dict(local_dict, g_emb_dict):
     return g_emb_dict
 
 
-# In[6]:
+# In[28]:
 
 
 def add_embedding_from_JSON(jons_entries,g_emb_dict):
@@ -131,7 +122,7 @@ def add_embedding_from_JSON(jons_entries,g_emb_dict):
     return g_emb_dict
 
 
-# In[7]:
+# In[29]:
 
 
 def read_ind_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
@@ -149,7 +140,7 @@ def read_ind_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
     
 
 
-# In[10]:
+# In[30]:
 
 
 def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
@@ -163,7 +154,6 @@ def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
 
     #initialize local dict with zero values for each 
     local_dict = initialize_local_dict(n_itr,n_w,TOTAL_MOTIF_ORBIT)
-
     for itr_w_id,num_v in itr_w_dict.items():
         itr , w ,mid = itr_w_id.split("_")[0], itr_w_id.split("_")[1], int(itr_w_id.split("_")[2])
         key="_".join([str(itr),str(w)])
@@ -176,7 +166,7 @@ def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
     return g_emb_dict
 
 
-# In[31]:
+# In[32]:
 
 
 def get_graph_embeddings(inputpath,graph_emb_input_files):
@@ -245,7 +235,7 @@ def get_graph_embeddings(inputpath,graph_emb_input_files):
     
 
 
-# In[378]:
+# In[10]:
 
 
 def df_kmean(df,k):
@@ -284,7 +274,7 @@ def df_kmean(df,k):
         
 
 
-# In[402]:
+# In[11]:
 
 
 def df_elbow():
@@ -306,7 +296,7 @@ def df_elbow():
     
 
 
-# In[210]:
+# In[12]:
 
 
 # get node embeddings
@@ -329,7 +319,7 @@ def get_node_embedding(inputpath,graph_emb_input_files):
     return result
 
 
-# In[37]:
+# In[13]:
 
 
 # emebedding file lists:  
@@ -388,7 +378,13 @@ if __name__ == "__main__":
     main()
 
 
-# In[88]:
+# In[15]:
+
+
+#inputpath = "D:/localcode/STM/out_real_usa_upAug/"
+
+
+# In[33]:
 
 
 #graph_emb = get_graph_embeddings(inputpath,graph_emb_input_files)
@@ -458,6 +454,53 @@ if __name__ == "__main__":
 
 
 #node_emb
+
+
+# In[136]:
+
+
+vif = pd.read_csv("D://localcode//STM/699287329224529_Vertex_ITeM_Frequency.txt",header=None)
+nm = pd.read_csv("D://localcode//STM/nodeMap.txt",header=None)
+vifs = set(vif[2].to_list())
+print(len(vifs))
+nms = set(nm[0].to_list())
+print(len(nms))
+diff = nms.difference(vifs)
+print(len(diff))
+
+
+# In[ ]:
+
+
+
+
+
+# In[135]:
+
+
+diff
+
+
+# In[91]:
+
+
+tt = pd.read_csv("D://localdata/kdd_tech-as-topology.csv",header=None)
+
+
+# In[99]:
+
+
+v_s = set(tt[0])
+v_d = set(tt[2])
+print(len(v_s))
+print(len(v_d))
+
+
+# In[101]:
+
+
+totalv = v_s.union(v_d)
+print(len(totalv))
 
 
 # In[ ]:

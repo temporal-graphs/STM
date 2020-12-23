@@ -149,8 +149,8 @@ object STM_NodeArrivalRateMultiType {
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
   val gMotifNameToOrbitKeys = STMConf.motifNameToOrbitKeys
   val gmotifNameToITeMKeys = STMConf.motifNameToITeMKeys
-  var currItrID = 1
-  var currWinID = 1
+  var currItrID = 0
+  var currWinID = 0
   /*
    * if we define gETypes here as "var" and then update it's value from command line. The new value does not reach to
    * the executor becuase driver has already sent the value to executor once and it does not -resend it when the
@@ -838,10 +838,17 @@ object STM_NodeArrivalRateMultiType {
     }
 
       // Header line of few files
-      gITeM_IndFWr.println(1+","+1)
+    gITeM_IndFWr.println(1+","+1)
       gVtxIndFWr.println(1+","+1)
       gMotifVtxAssoFWr.println(1+","+1)
       gOrbtVtxAssoFWr.println(1+","+1)
+    gVtxIndFWr.println(
+      "#num_v_nonverlapping,num_v_max,v_independence_0_0")
+    gITeM_IndFWr.println(
+      "#num_total_motif,num_ind_motif," +
+        "motif_independence," + itr + "," + i
+    )
+
     try {
       val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs,k_top,max_cores)
       if (gDebug) {
