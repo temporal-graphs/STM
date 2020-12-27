@@ -845,8 +845,7 @@ object STM_NodeArrivalRateMultiType {
     gVtxIndFWr.println(
       "#num_v_nonverlapping,num_v_max,v_independence_0_0")
     gITeM_IndFWr.println(
-      "#num_total_motif,num_ind_motif," +
-        "motif_independence," + itr + "," + i
+      "#num_total_motif,num_ind_motif,motif_independence_0_0"
     )
 
     try {

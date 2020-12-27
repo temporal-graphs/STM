@@ -459,14 +459,14 @@ if __name__ == "__main__":
 # In[136]:
 
 
-vif = pd.read_csv("D://localcode//STM/699287329224529_Vertex_ITeM_Frequency.txt",header=None)
-nm = pd.read_csv("D://localcode//STM/nodeMap.txt",header=None)
-vifs = set(vif[2].to_list())
-print(len(vifs))
-nms = set(nm[0].to_list())
-print(len(nms))
-diff = nms.difference(vifs)
-print(len(diff))
+# vif = pd.read_csv("D://localcode//STM/699287329224529_Vertex_ITeM_Frequency.txt",header=None)
+# nm = pd.read_csv("D://localcode//STM/nodeMap.txt",header=None)
+# vifs = set(vif[2].to_list())
+# print(len(vifs))
+# nms = set(nm[0].to_list())
+# print(len(nms))
+# diff = nms.difference(vifs)
+# print(len(diff))
 
 
 # In[ ]:
@@ -478,29 +478,29 @@ print(len(diff))
 # In[135]:
 
 
-diff
+# diff
 
 
 # In[91]:
 
 
-tt = pd.read_csv("D://localdata/kdd_tech-as-topology.csv",header=None)
+# tt = pd.read_csv("D://localdata/kdd_tech-as-topology.csv",header=None)
 
 
 # In[99]:
 
 
-v_s = set(tt[0])
-v_d = set(tt[2])
-print(len(v_s))
-print(len(v_d))
+# v_s = set(tt[0])
+# v_d = set(tt[2])
+# print(len(v_s))
+# print(len(v_d))
 
 
 # In[101]:
 
 
-totalv = v_s.union(v_d)
-print(len(totalv))
+# totalv = v_s.union(v_d)
+# print(len(totalv))
 
 
 # In[ ]:
