@@ -969,7 +969,7 @@ object STM_NodeArrivalRateMultiType {
               && (e._4 < win_end_time)
         )
         .count()
-      myprintln(" edges in current window i = "+ i+ edges_in_current_window)
+      myprintln(" edges in current window i = "+ i + " " + edges_in_current_window)
       window_prob += edges_in_current_window.toDouble / total_edges
     }
     myprintln("prob is " + window_prob)
@@ -1000,7 +1000,7 @@ object STM_NodeArrivalRateMultiType {
             )
             gITeM_IndFWr.println(
               "#num_total_motif,num_ind_motif," +
-                "motif_independence," + itr + "," + i
+                "motif_independence_" + itr + "_" + i
             )
             num_w_in_sampling = num_w_in_sampling + 1
 
