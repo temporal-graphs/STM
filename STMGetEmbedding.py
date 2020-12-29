@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[55]:
 
 
 import pandas as pd
@@ -14,6 +14,10 @@ import json
 import numpy as np
 import sys
 from sklearn import preprocessing
+# Importing Modules
+from sklearn import datasets
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 
 
 # In[24]:
@@ -166,7 +170,7 @@ def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
     return g_emb_dict
 
 
-# In[32]:
+# In[75]:
 
 
 def get_graph_embeddings(inputpath,graph_emb_input_files):
@@ -177,6 +181,7 @@ def get_graph_embeddings(inputpath,graph_emb_input_files):
     for f in graph_emb_input_files:
         print(f)
         filePath = glob.glob(inputpath+"/"+f)[0]
+        print(filePath)
         if f == "*ITeM_Freq.txt":
             item_freq = json.load(open(filePath))
             g_emb_dict = add_embedding_from_JSON(item_freq,g_emb_dict)
@@ -235,7 +240,7 @@ def get_graph_embeddings(inputpath,graph_emb_input_files):
     
 
 
-# In[10]:
+# In[49]:
 
 
 def df_kmean(df,k):
@@ -267,6 +272,7 @@ def df_kmean(df,k):
     ax.scatter(centers_pca_df['PC1'], centers_pca_df['PC2'], c='magenta', s=200, alpha=0.5);
 
     for i, txt in enumerate(df.index.to_list()):
+        print(txt)
         ax.annotate(str(txt).replace("US, ",""), (principalDf.loc[i,'PC1'], principalDf.loc[i,'PC2']))
 
     
@@ -319,7 +325,7 @@ def get_node_embedding(inputpath,graph_emb_input_files):
     return result
 
 
-# In[13]:
+# In[74]:
 
 
 # emebedding file lists:  
@@ -378,29 +384,48 @@ if __name__ == "__main__":
     main()
 
 
-# In[15]:
+# In[43]:
 
 
-#inputpath = "D:/localcode/STM/out_real_usa_upAug/"
+inputpath = "D:/localcode/STM/out_real_usa_upAug/"
 
 
-# In[33]:
+# In[50]:
 
 
-#graph_emb = get_graph_embeddings(inputpath,graph_emb_input_files)
-#graph_emb_mean = get_graph_embeddings(inputpath,graph_avg_emb_input_files)
+# #graph_emb = get_graph_embeddings(inputpath,graph_emb_input_files)
+# #graph_emb_mean = get_graph_embeddings(inputpath,graph_avg_emb_input_files)
+# #write node emb and node_mean emb
+# node_map = {}
+# with open(inputpath+"/nodeMap.txt") as infile:
+#     for line in infile:
+#         larr = line.rstrip().split(",")
+#         node_map[int(larr[0])] = larr[1]
+
+# node_emb = get_node_embedding(inputpath,node_emb_input_files)
+# #change node id to node label
+# #node_emb.iloc[:,1] = node_emb.iloc[:,1].apply(lambda vid: node_map[str(int(vid))])
+# node_emb = node_emb.rename(index=node_map)
+# node_emb.columns = range(len(node_emb.columns))
 
 
-# In[369]:
+# In[72]:
 
 
-#df_kmean(df_kmean,3)
+# model = KMeans (n_clusters=3)
+# preds = model.fit_predict(node_emb)
+# centers = model.cluster_centers_
+# labels = model.labels_
+# st_cluster_dict = {}
+# for i, txt in enumerate(node_emb.index.to_list()):
+#         st_cluster_dict[txt.replace("US","").strip()] = labels[i]
+# print(st_cluster_dict)
 
 
-# In[35]:
+# In[51]:
 
 
-#df_kmean(node_emb,3)
+df_kmean(node_emb,3)
 
 
 # In[201]:
