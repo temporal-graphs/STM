@@ -141,6 +141,8 @@ object STM_NodeArrivalRateMultiType {
   val gWindowSizeFWriter = new PrintWriter(
                                             new FileWriter(gWindowSizeFile, true)
                                           )
+  val nodemapFileObj = new File("nodeMap.txt")
+  val nodemapFile = new PrintWriter(nodemapFileObj)
 
   val gDebug = false
   val gHigherGOut = true
@@ -265,7 +267,6 @@ object STM_NodeArrivalRateMultiType {
     //val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
 
 
-    val nodemapFile = new PrintWriter((new File("nodeMap.txt")))
 
     val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
     val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )) .cache()
@@ -957,18 +958,27 @@ object STM_NodeArrivalRateMultiType {
     val total_edges: Long = initial_simple_tag.filter(e => e._4 > -1).count()
     var window_prob: ListBuffer[Double] = ListBuffer.empty
 
+    //val deg_File = new PrintWriter(new File("Deg_Dist.csv"))
     for (i <- 0 to num_windows - 1) {
       val win_start_time = minTime + i * time_in_window
       val win_end_time = minTime + (i + 1) * time_in_window
       myprintln("win start and end "+ win_start_time+ win_end_time)
 
-      val edges_in_current_window: Long = initial_simple_tag
+
+      val all_edges_in_current_window = initial_simple_tag
         .filter(
           e =>
             (e._4 >= win_start_time) //start and end time does not include -1
               && (e._4 < win_end_time)
         )
-        .count()
+//      val deg_dist = all_edges_in_current_window.flatMap(e
+//      =>Iterator((e._1,1),(e._3,1))).reduceByKey((d1,d2)=>d1+d2).map(v=>v._2).collect()
+//
+//      deg_File.println(deg_dist.mkString(","))
+//      deg_File.flush()
+//
+      val edges_in_current_window: Long =
+        all_edges_in_current_window.count()
       myprintln(" edges in current window i = "+ i + " " + edges_in_current_window)
       window_prob += edges_in_current_window.toDouble / total_edges
     }
@@ -3521,6 +3531,7 @@ object STM_NodeArrivalRateMultiType {
       moveFileInner(gITeM_IndFile)
       moveFileInner(gVtxIndFile)
       moveFileInner(gHigherGraphFile)
+      moveFileInner(nodemapFileObj)
 
       val directory = new File(".")
       myprintln("curr dir is "+ directory.getAbsolutePath)
