@@ -141,7 +141,7 @@ object STM_NodeArrivalRateMultiType {
   val gWindowSizeFWriter = new PrintWriter(
                                             new FileWriter(gWindowSizeFile, true)
                                           )
-  val nodemapFileObj = new File("nodeMap.txt")
+  val nodemapFileObj = new File(t1 + "_nodeMap.txt")
   val nodemapFile = new PrintWriter(nodemapFileObj)
 
   val gDebug = false

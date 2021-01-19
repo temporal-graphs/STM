@@ -348,8 +348,9 @@ def main():
     graph_emb.to_csv(outpath+"graph.emb",header=False)
     
     #write node emb and node_mean emb
+    filePath = glob.glob(inputpath+"/*nodeMap.txt")[0]
     node_map = {}
-    with open(inputpath+"/nodeMap.txt") as infile:
+    with open(filePath) as infile:
         for line in infile:
             larr = line.rstrip().split(",")
             node_map[int(larr[0])] = larr[1]
@@ -384,10 +385,10 @@ if __name__ == "__main__":
     main()
 
 
-# In[43]:
+# In[77]:
 
 
-inputpath = "D:/localcode/STM/out_real_usa_upAug/"
+#inputpath = "D:/localcode/STM/out_real_usa_upAug/"
 
 
 # In[50]:
@@ -425,7 +426,7 @@ inputpath = "D:/localcode/STM/out_real_usa_upAug/"
 # In[51]:
 
 
-df_kmean(node_emb,3)
+#df_kmean(node_emb,3)
 
 
 # In[201]:
