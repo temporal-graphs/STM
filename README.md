@@ -32,7 +32,7 @@ mvn clean package
 ```
 It generates an uber-jar in the `target` directory which can be used to generate the ITeM distributions
 ```
-java -cp target/uber-STM-1.3-SNAPSHOT.jar gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType -input_file="input.csv" -separator="," -sampling=false -valid_etypes=1 -delta_limit=false -k_top=4 -base_out_dir=".\output\itemfreq\"
+java -cp target/uber-STM-1.3-SNAPSHOT.jar gov.pnnl.stm.algorithms.STM_NodeArrivalRateMultiType -input_file="input.csv" -separator="," -sampling=false -valid_etypes=1 -delta_limit=false -k_top=4 -base_out_dir="./item-output/"
 ```
 where `input.csv` has following format
 ```
@@ -40,4 +40,9 @@ where `input.csv` has following format
 1,0,3,1002
 1,0,4,1002
 2,0,5,1003
+```
+
+It generates multiple internal files for different temporal properties. Follwoing script reads them in and generate "graph embeddings" and "node embeddings"
+```
+python STMGetEmbedding.py './item-output/' './emb'
 ```
