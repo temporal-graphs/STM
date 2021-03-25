@@ -102,6 +102,12 @@ object STM_NodeArrivalRateMultiType {
   val gOrbtVtxAssoFWr = new PrintWriter(
     new FileWriter(gOrbtVtxAssoFile, true)
   )
+  val gMotifVtxCooccurFile = new File(
+    t1 + "_Motif_Cooccurance" + prefix_annotation + ".txt"
+  )
+  val gMotifVtxCooccurFWr = new PrintWriter(
+    new FileWriter(gMotifVtxCooccurFile, true)
+  )
   val gMotifVtxAssoFile = new File(
     t1 + "_Motif_Association" + prefix_annotation + ".txt"
   )
@@ -466,6 +472,11 @@ object STM_NodeArrivalRateMultiType {
     gVertex_Orbit_Freq = gVertex_Orbit_Freq |+| vertex_orbit_freq_map
     //update vertex ITem freq
     updateITemFreq("isolatednode",isolated_v.collect().toList,0)
+
+    //write co occurennce
+    isolated_v.collect().foreach(v=> gMotifVtxCooccurFWr.println(v + "," + v + "," + motifName))
+    gMotifVtxCooccurFWr.flush()
+
 
     writeMotifVertexAssoication(isolated_v.collect(), motifName)
 
@@ -1624,6 +1635,8 @@ object STM_NodeArrivalRateMultiType {
         .distinct()
         .collect()
 
+      self_loop_nodes.foreach(v=> gMotifVtxCooccurFWr.println(v + "," + v + "," + motifName))
+      gMotifVtxCooccurFWr.flush()
       writeMotifVertexAssoication(self_loop_nodes, motifName)
 
       val v_distinct = self_loop_nodes.length
@@ -1666,6 +1679,14 @@ object STM_NodeArrivalRateMultiType {
       validMotifsArray: RDD[(Int, Int, Int, Long)],
       motifName: String
   ): Unit = {
+    /*use this method as entry point to write motif
+    co-occurence file also
+     */
+    validMotifsArray.collect().foreach(e=>
+    gMotifVtxCooccurFWr.println(e._1 + "," + e._3 + "," + motifName))
+    gMotifVtxCooccurFWr.flush()
+
+
     val multi_edge_nodes: Array[Int] = validMotifsArray
       .flatMap(e => {
         Iterator(e._1, e._3)
@@ -3414,6 +3435,11 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
         .collect()
+
+      //write co-occurennce
+      resi_edge_nodes.foreach(v=> gMotifVtxCooccurFWr.println(v + "," + v + "," + motifName))
+      gMotifVtxCooccurFWr.flush()
+
       val motif_v_file = new PrintWriter(
         new File(
           t1 + "residual" + prefix_annotation +
