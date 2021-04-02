@@ -46,3 +46,14 @@ It generates multiple internal files for different temporal properties. Follwoin
 ```
 python STMGetEmbedding.py './item-output/' './emb'
 ```
+
+
+If you find this useful, please cite following publication
+```
+@article{purohit2020item,
+  title={ITeM: Independent Temporal Motifs to Summarize and Compare Temporal Networks},
+  author={Purohit, Sumit and Holder, Lawrence B and Chin, George},
+  journal={arXiv preprint arXiv:2002.08312},
+  year={2020}
+}
+```
