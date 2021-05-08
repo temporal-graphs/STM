@@ -298,7 +298,6 @@ def main():
         sys.exit()
     in_dir_path = sys.argv[1]
     out_json_path = sys.argv[2]
-    #writeGSG("D:/localcode/STM/data/emailEU11.0_tmp","D:/localcode/STM/data/emailEU11.0_tmp/gsg.json" )
     writeGSG(in_dir_path,out_json_path)
     print("STM2GSG:SUCCESS")
 
