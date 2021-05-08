@@ -151,7 +151,7 @@ object STM_NodeArrivalRateMultiType {
   val nodemapFile = new PrintWriter(nodemapFileObj)
 
   val gDebug = false
-  val gHigherGOut = true
+  val gHigherGOut = false
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
@@ -231,7 +231,7 @@ object STM_NodeArrivalRateMultiType {
       if (clo.getOrElse("-separator", ",").equalsIgnoreCase("\\t"))
         '\t'.toString
       else clo.getOrElse("-separator", ",")
-    myprintln("sep is " + sep)
+    println("sep is " + sep)
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
     val avg_outdeg_file =
       clo.getOrElse("-avg_outdeg_file", nodeFile + "avg_outdeg.csv")
@@ -264,7 +264,7 @@ object STM_NodeArrivalRateMultiType {
 
 
     myprintln("input paramters are :" + clo.toString)
-    myprintln("Spark paramters are " + sc.getConf.getAll.foreach(println))
+    println("Spark paramters are " + sc.getConf.getAll.foreach(println))
 
     /*
      * Get the base tag rdd which has 4 things: src etype dst time
@@ -486,6 +486,17 @@ object STM_NodeArrivalRateMultiType {
 
     gMotifInfo += List(iso_v_cnt.toInt)
     myprintln(gMotifInfo.toString)
+
+    println("total higher edges  " + isolated_v.count())
+
+    if (gHigherGOut == true) {
+      // Only show the source node where we have simultanious edges
+      isolated_v.collect
+        .foreach(v => gHigherGraphFWriter.println(v))
+      gHigherGraphFWriter.flush()
+    }
+
+
     //gOffsetInfo += List(0L)
     g_base.filterEdges("type != -1").dropIsolatedVertices()
   }
@@ -515,6 +526,7 @@ object STM_NodeArrivalRateMultiType {
       println("graph sizev ", g.vertices.count)
       println("graph size e", g.edges.count)
     }
+    //isolated edges have nodes with degree 1
     val v_deg_1 = g.degrees.filter(row => row.getAs[Int](1) == 1).cache()
 
     // get_row_src is used use but it is just getting 0th element of the row
@@ -531,6 +543,12 @@ object STM_NodeArrivalRateMultiType {
     val selctedMotifEdges =
       iso_edgs.select(selectEdgeArr.head, selectEdgeArr.tail: _*).persist()
     val iso_edge_cnt = selctedMotifEdges.count()
+    if (gHigherGOut == true) {
+      // Only show the source node where we have simultanious edges
+      selctedMotifEdges.collect
+        .foreach(e => gHigherGraphFWriter.println(get_row_id(e)))
+      gHigherGraphFWriter.flush()
+    }
     // update vertex item freq
     val node_ids = selctedMotifEdges.rdd.flatMap(row
     =>Iterable(get_row_src(row),get_row_dst(row))).collect().toList
@@ -859,6 +877,8 @@ object STM_NodeArrivalRateMultiType {
     gITeM_IndFWr.println(
       "#num_total_motif,num_ind_motif,motif_independence_0_0"
     )
+    gWindowTimeFWriter.println("#duration,"+ duration)
+    gWindowTimeFWriter.flush()
 
     try {
       val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs,k_top,max_cores)
@@ -1444,6 +1464,15 @@ object STM_NodeArrivalRateMultiType {
           (max_time - min_time).toDouble / all_multi_edges_on_srcdst.size
         })
 
+
+        println("Higher total graph eddges "  + multi_edges_info.count())
+        if (gHigherGOut == true) {
+          // Only show the source node where we have simultanious edges
+          multi_edges_info.collect()
+            .foreach(e => gHigherGraphFWriter.println(e._2._2))
+          gHigherGraphFWriter.flush()
+        }
+
         val eSum = avg_offset_time_perkey.sum
         val eCnt = avg_offset_time_perkey.count
         val eMean: Long = eSum.toLong / eCnt
@@ -1585,6 +1614,14 @@ object STM_NodeArrivalRateMultiType {
 
       val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
       val gVBirthTime_exec = gSC.broadcast(gVBirthTime).value
+
+      println("higher edges self loop " + selctedMotifEdges.count())
+      if (gHigherGOut == true) {
+        // Only show the source node where we have simultanious edges
+        selctedMotifEdges.collect
+          .foreach(e => gHigherGraphFWriter.println(get_row_id(e)))
+        gHigherGraphFWriter.flush()
+      }
 
       val new_self_loop_v =selctedMotifEdges
         .filter(row => {
@@ -2376,6 +2413,9 @@ object STM_NodeArrivalRateMultiType {
     | 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|316|   0| 97|1015455157|
     | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|316|   0| 97|1015455157|
      */
+    println("In quad...ovelappoing motifs are ")
+    overlappingMotifs.show(10)
+    overlappingMotifs.collect().foreach(m=>println(get_row_id(m)))
     val selctedMotifEdges_local_nonoverlap =
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {
@@ -2412,10 +2452,11 @@ object STM_NodeArrivalRateMultiType {
         num_motif_nodes * num_motif_edges
       )
       .cache()
+    println("TOtal higher edgees in quad 4E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      valid_motif_overlap_graph.vertices.collect
-        .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      gHigherGraphFWriter.flush()
+      //valid_motif_overlap_graph.vertices.collect
+        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
+      //gHigherGraphFWriter.flush()
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter
@@ -2962,10 +3003,11 @@ object STM_NodeArrivalRateMultiType {
         num_motif_nodes * num_motif_edges
       )
       .cache()
+    println("TOtal higher edgees in 3E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      valid_motif_overlap_graph.vertices.collect
-        .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      gHigherGraphFWriter.flush()
+      //valid_motif_overlap_graph.vertices.collect
+        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
+      //gHigherGraphFWriter.flush()
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter
@@ -3219,10 +3261,12 @@ object STM_NodeArrivalRateMultiType {
         num_motif_nodes * num_motif_edges
       )
       .cache()
+    println("Total higher edges 2E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      valid_motif_overlap_graph.vertices.collect
-        .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      gHigherGraphFWriter.flush()
+      //valid_motif_overlap_graph.vertices.collect
+        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
+      //gHigherGraphFWriter.flush()
+      print("Total higher edges 2EN " + valid_motif_overlap_graph.edges.count())
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter
@@ -3464,6 +3508,7 @@ object STM_NodeArrivalRateMultiType {
        * be identified earlier.
        * BUG: Even both nodes can be "new" . TODO :fix it
        */
+     println("Toatal higher edges " + selctedMotifEdges.count())
       if (gHigherGOut == true) {
         // Write all residual edges
         selctedMotifEdges.collect
