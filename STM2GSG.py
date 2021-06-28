@@ -46,7 +46,7 @@ def writeGSG(inputpath,outgsgfile):
                 gsg_json["patterns"].append(make_pat(f"{k}_1__"+str(mid),T,float(v[1])/duration,[("v0",F),("v1",T)],[("e0","v0","v1"),("e1","v0","v1")]))
                 mid += 1
 
-                gsg_json["patterns"].append(make_pat(f"{k}_1__"+str(mid),T,float(v[1])/duration,[("v0",F),("v1",F)],[("e0","v0","v1"),("e1","v0","v1")]))
+                gsg_json["patterns"].append(make_pat(f"{k}_1__"+str(mid),T,float(v[2])/duration,[("v0",F),("v1",F)],[("e0","v0","v1"),("e1","v0","v1")]))
                 mid += 1
 
             if k == "m1":
