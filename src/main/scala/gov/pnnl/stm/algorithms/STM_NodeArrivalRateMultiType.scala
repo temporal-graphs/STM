@@ -2413,7 +2413,6 @@ object STM_NodeArrivalRateMultiType {
     | 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|316|   0| 97|1015455157|
     | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|316|   0| 97|1015455157|
      */
-    println("In quad...ovelappoing motifs are ")
     overlappingMotifs.show(10)
     overlappingMotifs.collect().foreach(m=>println(get_row_id(m)))
     val selctedMotifEdges_local_nonoverlap =
@@ -3594,6 +3593,24 @@ object STM_NodeArrivalRateMultiType {
       out_dir_base.mkdirs()
 
     try {
+      gITeMRateFWr.close()
+      gITeM_FreqFWr.close()
+      gOffsetFWriter.close()
+      gOffsetAllFWriter.close()
+      gVertexBirthFWriter.close()
+      gITeM_IndFWr.close()
+      gVtxIndFWr.close()
+      gHigherGraphFWriter.close()
+      nodemapFile.close()
+      gMotifVtxAssoFWr.close()
+      gOrbtVtxAssoFWr.close()
+      gMotifVtxCooccurFWr.close()
+      gVertexITeMFreqFWr.close()
+      gVertexOrbitFreqFWr.close()
+      gOrbit_Ind_FWr.close()
+      gWindowSizeFWriter.close()
+      gWindowTimeFWriter.close()
+
       moveFileInner(gITeMRateFile)
       moveFileInner(gITeM_FreqFile)
       moveFileInner(gOffsetFile)
