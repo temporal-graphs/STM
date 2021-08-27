@@ -319,13 +319,6 @@ object STM_NodeArrivalRateMultiType {
 
     myprintln("local res 1" + local_res._1)
 
-    //write json file
-    // val out_file_os_path = new PrintWriter(new File(out_json_file_os_path))
-    //    writeMotifPatterns.writeJSON(gAtomicMotifs.values.toArray, out_file_os_path, local_res._1,
-    //                                 local_res
-    //      ._2,
-    //                                 duration, v_size)
-
     //write average out degree file and motif count json file
     gITeM_FreqFWr.println("]")
     gITeM_FreqFWr.flush()
