@@ -2406,7 +2406,6 @@ object STM_NodeArrivalRateMultiType {
     | 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|316|   0| 97|1015455157|
     | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|316|   0| 97|1015455157|
      */
-    overlappingMotifs.show(10)
     overlappingMotifs.collect().foreach(m=>println(get_row_id(m)))
     val selctedMotifEdges_local_nonoverlap =
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
