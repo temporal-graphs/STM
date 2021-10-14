@@ -5,14 +5,13 @@
  * @Mining
  */
 package gov.pnnl.stm.algorithms
-import java.io.File
-import java.io.PrintWriter
+import java.io.{File, PrintWriter}
 
 import gov.pnnl.stm.conf.STMConf
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-import scala.util.Random
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
+import scala.util.Random
 
 /**
  * @author puro755
@@ -41,7 +40,7 @@ object writeMotifPatterns {
     		
         	
         	
-        	val OffsetFile = "/Users/puro755/OneDrive - PNNL/PhD/GraphGeneration/graph-stream-generator/Offset.txt"
+        val OffsetFile = "/Users/puro755/OneDrive - PNNL/PhD/GraphGeneration/graph-stream-generator/Offset.txt"
     		val motifProbability : scala.collection.mutable.ListBuffer[Double] =  scala.collection.mutable.ListBuffer()
     		val motifOffset : scala.collection.mutable.ListBuffer[Long] =  scala.collection.mutable
           .ListBuffer()
