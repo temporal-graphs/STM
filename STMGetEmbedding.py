@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[211]:
+# In[55]:
 
 
 import pandas as pd
@@ -14,9 +14,13 @@ import json
 import numpy as np
 import sys
 from sklearn import preprocessing
+# Importing Modules
+from sklearn import datasets
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 
 
-# In[2]:
+# In[24]:
 
 
 def get_emb_list_from_json_row(json_row):
@@ -29,7 +33,7 @@ def get_emb_list_from_json_row(json_row):
     return row
 
 
-# In[3]:
+# In[25]:
 
 
 # it returns a dictionary that tells for which iter,w,motif/orbitid => nuber of nodes
@@ -49,7 +53,7 @@ def get_num_v_association(filePath):
     return itr_w_dict
 
 
-# In[28]:
+# In[26]:
 
 
 def get_3rd_entry_ind(filePath):
@@ -62,16 +66,16 @@ def get_3rd_entry_ind(filePath):
                 # should improve
                 # #num_total_motif,num_ind_motif,motif_independence_0_0
                 larr = line.split(",")
-                curr_itr = larr[-2]
-                curr_w = larr[-1]
+                curr_itr = larr[-1].split("_")[-2]
+                curr_w = larr[-1].split("_")[-1]
                 continue
             larr = line.rstrip().split(",")
             if len(larr) == 2:
-                #first line
+                #first line that list total number of iterations and windows in this file
                 itr_w_dict['n_itr'] = larr[0]
                 itr_w_dict['n_w'] = larr[1]
             else:
-                key = "_".join([curr_itr,curr_w])
+                key = "_".join([str(curr_itr),str(curr_w)])
                 curr_list = itr_w_dict.get(key,[])
                 curr_list.append(float(larr[2]))
                 itr_w_dict[key] = curr_list
@@ -86,16 +90,7 @@ def get_3rd_entry_ind(filePath):
 
 
 
-# In[226]:
-
-
-a=[1,2,3,4]
-b=a.append(5)
-print(b)
-print(a[2:60])
-
-
-# In[5]:
+# In[27]:
 
 
 def initialize_local_dict(n_itr,n_w,size):
@@ -115,7 +110,7 @@ def update_global_dict(local_dict, g_emb_dict):
     return g_emb_dict
 
 
-# In[6]:
+# In[28]:
 
 
 def add_embedding_from_JSON(jons_entries,g_emb_dict):
@@ -131,7 +126,7 @@ def add_embedding_from_JSON(jons_entries,g_emb_dict):
     return g_emb_dict
 
 
-# In[7]:
+# In[29]:
 
 
 def read_ind_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
@@ -149,7 +144,7 @@ def read_ind_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
     
 
 
-# In[10]:
+# In[30]:
 
 
 def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
@@ -163,7 +158,6 @@ def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
 
     #initialize local dict with zero values for each 
     local_dict = initialize_local_dict(n_itr,n_w,TOTAL_MOTIF_ORBIT)
-
     for itr_w_id,num_v in itr_w_dict.items():
         itr , w ,mid = itr_w_id.split("_")[0], itr_w_id.split("_")[1], int(itr_w_id.split("_")[2])
         key="_".join([str(itr),str(w)])
@@ -176,7 +170,7 @@ def read_association_file(filePath,g_emb_dict,TOTAL_MOTIF_ORBIT):
     return g_emb_dict
 
 
-# In[31]:
+# In[75]:
 
 
 def get_graph_embeddings(inputpath,graph_emb_input_files):
@@ -187,6 +181,7 @@ def get_graph_embeddings(inputpath,graph_emb_input_files):
     for f in graph_emb_input_files:
         print(f)
         filePath = glob.glob(inputpath+"/"+f)[0]
+        print(filePath)
         if f == "*ITeM_Freq.txt":
             item_freq = json.load(open(filePath))
             g_emb_dict = add_embedding_from_JSON(item_freq,g_emb_dict)
@@ -245,7 +240,7 @@ def get_graph_embeddings(inputpath,graph_emb_input_files):
     
 
 
-# In[378]:
+# In[49]:
 
 
 def df_kmean(df,k):
@@ -277,6 +272,7 @@ def df_kmean(df,k):
     ax.scatter(centers_pca_df['PC1'], centers_pca_df['PC2'], c='magenta', s=200, alpha=0.5);
 
     for i, txt in enumerate(df.index.to_list()):
+        print(txt)
         ax.annotate(str(txt).replace("US, ",""), (principalDf.loc[i,'PC1'], principalDf.loc[i,'PC2']))
 
     
@@ -284,7 +280,7 @@ def df_kmean(df,k):
         
 
 
-# In[402]:
+# In[11]:
 
 
 def df_elbow():
@@ -306,7 +302,7 @@ def df_elbow():
     
 
 
-# In[210]:
+# In[12]:
 
 
 # get node embeddings
@@ -329,7 +325,7 @@ def get_node_embedding(inputpath,graph_emb_input_files):
     return result
 
 
-# In[37]:
+# In[74]:
 
 
 # emebedding file lists:  
@@ -352,8 +348,9 @@ def main():
     graph_emb.to_csv(outpath+"graph.emb",header=False)
     
     #write node emb and node_mean emb
+    filePath = glob.glob(inputpath+"/*nodeMap.txt")[0]
     node_map = {}
-    with open(inputpath+"/nodeMap.txt") as infile:
+    with open(filePath) as infile:
         for line in infile:
             larr = line.rstrip().split(",")
             node_map[int(larr[0])] = larr[1]
@@ -388,20 +385,45 @@ if __name__ == "__main__":
     main()
 
 
-# In[88]:
+# In[77]:
 
 
-#graph_emb = get_graph_embeddings(inputpath,graph_emb_input_files)
-#graph_emb_mean = get_graph_embeddings(inputpath,graph_avg_emb_input_files)
+#inputpath = "D:/localcode/STM/out_real_usa_upAug/"
 
 
-# In[369]:
+# In[50]:
 
 
-#df_kmean(df_kmean,3)
+# #graph_emb = get_graph_embeddings(inputpath,graph_emb_input_files)
+# #graph_emb_mean = get_graph_embeddings(inputpath,graph_avg_emb_input_files)
+# #write node emb and node_mean emb
+# node_map = {}
+# with open(inputpath+"/nodeMap.txt") as infile:
+#     for line in infile:
+#         larr = line.rstrip().split(",")
+#         node_map[int(larr[0])] = larr[1]
+
+# node_emb = get_node_embedding(inputpath,node_emb_input_files)
+# #change node id to node label
+# #node_emb.iloc[:,1] = node_emb.iloc[:,1].apply(lambda vid: node_map[str(int(vid))])
+# node_emb = node_emb.rename(index=node_map)
+# node_emb.columns = range(len(node_emb.columns))
 
 
-# In[35]:
+# In[72]:
+
+
+# model = KMeans (n_clusters=3)
+# preds = model.fit_predict(node_emb)
+# centers = model.cluster_centers_
+# labels = model.labels_
+# st_cluster_dict = {}
+# for i, txt in enumerate(node_emb.index.to_list()):
+#         st_cluster_dict[txt.replace("US","").strip()] = labels[i]
+# print(st_cluster_dict)
+
+
+# In[51]:
 
 
 #df_kmean(node_emb,3)
@@ -458,6 +480,53 @@ if __name__ == "__main__":
 
 
 #node_emb
+
+
+# In[136]:
+
+
+# vif = pd.read_csv("D://localcode//STM/699287329224529_Vertex_ITeM_Frequency.txt",header=None)
+# nm = pd.read_csv("D://localcode//STM/nodeMap.txt",header=None)
+# vifs = set(vif[2].to_list())
+# print(len(vifs))
+# nms = set(nm[0].to_list())
+# print(len(nms))
+# diff = nms.difference(vifs)
+# print(len(diff))
+
+
+# In[ ]:
+
+
+
+
+
+# In[135]:
+
+
+# diff
+
+
+# In[91]:
+
+
+# tt = pd.read_csv("D://localdata/kdd_tech-as-topology.csv",header=None)
+
+
+# In[99]:
+
+
+# v_s = set(tt[0])
+# v_d = set(tt[2])
+# print(len(v_s))
+# print(len(v_d))
+
+
+# In[101]:
+
+
+# totalv = v_s.union(v_d)
+# print(len(totalv))
 
 
 # In[ ]:

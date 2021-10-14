@@ -102,6 +102,12 @@ object STM_NodeArrivalRateMultiType {
   val gOrbtVtxAssoFWr = new PrintWriter(
     new FileWriter(gOrbtVtxAssoFile, true)
   )
+  val gMotifVtxCooccurFile = new File(
+    t1 + "_Motif_Cooccurance" + prefix_annotation + ".txt"
+  )
+  val gMotifVtxCooccurFWr = new PrintWriter(
+    new FileWriter(gMotifVtxCooccurFile, true)
+  )
   val gMotifVtxAssoFile = new File(
     t1 + "_Motif_Association" + prefix_annotation + ".txt"
   )
@@ -141,16 +147,18 @@ object STM_NodeArrivalRateMultiType {
   val gWindowSizeFWriter = new PrintWriter(
                                             new FileWriter(gWindowSizeFile, true)
                                           )
+  val nodemapFileObj = new File(t1 + "_nodeMap.txt")
+  val nodemapFile = new PrintWriter(nodemapFileObj)
 
-  val gDebug = true
-  val gHigherGOut = true
+  val gDebug = false
+  val gHigherGOut = false
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
   val gMotifNameToKey = STMConf.atomocMotifNameToKey
   val gMotifNameToOrbitKeys = STMConf.motifNameToOrbitKeys
   val gmotifNameToITeMKeys = STMConf.motifNameToITeMKeys
-  var currItrID = 1
-  var currWinID = 1
+  var currItrID = 0
+  var currWinID = 0
   /*
    * if we define gETypes here as "var" and then update it's value from command line. The new value does not reach to
    * the executor becuase driver has already sent the value to executor once and it does not -resend it when the
@@ -223,7 +231,7 @@ object STM_NodeArrivalRateMultiType {
       if (clo.getOrElse("-separator", ",").equalsIgnoreCase("\\t"))
         '\t'.toString
       else clo.getOrElse("-separator", ",")
-    myprintln("sep is " + sep)
+    println("sep is " + sep)
     val nodeFile = clo.getOrElse("-input_file", "input-graph-file.csv")
     val avg_outdeg_file =
       clo.getOrElse("-avg_outdeg_file", nodeFile + "avg_outdeg.csv")
@@ -242,9 +250,10 @@ object STM_NodeArrivalRateMultiType {
       .set("spark.driver.maxResultSize","30g").set("spark.local.dir","D:\\tmp\\")
     lazy val sparkSession = SparkSession
       .builder()
-      .appName("STM")
+      .appName("STM").master("local")
       .config(sparkConf)
       .getOrCreate()
+
 
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
@@ -255,7 +264,7 @@ object STM_NodeArrivalRateMultiType {
 
 
     myprintln("input paramters are :" + clo.toString)
-    myprintln("Spark paramters are " + sc.getConf.getAll.foreach(println))
+    println("Spark paramters are " + sc.getConf.getAll.foreach(println))
 
     /*
      * Get the base tag rdd which has 4 things: src etype dst time
@@ -264,7 +273,6 @@ object STM_NodeArrivalRateMultiType {
     //val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
 
 
-    val nodemapFile = new PrintWriter((new File("nodeMap.txt")))
 
     val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
     val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )) .cache()
@@ -310,13 +318,6 @@ object STM_NodeArrivalRateMultiType {
     var local_res = processTAG(inputTAG, gDebug, clo,filterNodeIDs_WoLo)
 
     myprintln("local res 1" + local_res._1)
-
-    //write json file
-    // val out_file_os_path = new PrintWriter(new File(out_json_file_os_path))
-    //    writeMotifPatterns.writeJSON(gAtomicMotifs.values.toArray, out_file_os_path, local_res._1,
-    //                                 local_res
-    //      ._2,
-    //                                 duration, v_size)
 
     //write average out degree file and motif count json file
     gITeM_FreqFWr.println("]")
@@ -465,6 +466,11 @@ object STM_NodeArrivalRateMultiType {
     //update vertex ITem freq
     updateITemFreq("isolatednode",isolated_v.collect().toList,0)
 
+    //write co occurennce
+    isolated_v.collect().foreach(v=> gMotifVtxCooccurFWr.println(v + "," + v + "," + motifName))
+    gMotifVtxCooccurFWr.flush()
+
+
     writeMotifVertexAssoication(isolated_v.collect(), motifName)
 
     write_vertex_independence(iso_v_cnt, iso_v_cnt)
@@ -473,6 +479,17 @@ object STM_NodeArrivalRateMultiType {
 
     gMotifInfo += List(iso_v_cnt.toInt)
     myprintln(gMotifInfo.toString)
+
+    println("total higher edges  " + isolated_v.count())
+
+    if (gHigherGOut == true) {
+      // Only show the source node where we have simultanious edges
+      isolated_v.collect
+        .foreach(v => gHigherGraphFWriter.println(v))
+      gHigherGraphFWriter.flush()
+    }
+
+
     //gOffsetInfo += List(0L)
     g_base.filterEdges("type != -1").dropIsolatedVertices()
   }
@@ -502,6 +519,7 @@ object STM_NodeArrivalRateMultiType {
       println("graph sizev ", g.vertices.count)
       println("graph size e", g.edges.count)
     }
+    //isolated edges have nodes with degree 1
     val v_deg_1 = g.degrees.filter(row => row.getAs[Int](1) == 1).cache()
 
     // get_row_src is used use but it is just getting 0th element of the row
@@ -518,6 +536,12 @@ object STM_NodeArrivalRateMultiType {
     val selctedMotifEdges =
       iso_edgs.select(selectEdgeArr.head, selectEdgeArr.tail: _*).persist()
     val iso_edge_cnt = selctedMotifEdges.count()
+    if (gHigherGOut == true) {
+      // Only show the source node where we have simultanious edges
+      selctedMotifEdges.collect
+        .foreach(e => gHigherGraphFWriter.println(get_row_id(e)))
+      gHigherGraphFWriter.flush()
+    }
     // update vertex item freq
     val node_ids = selctedMotifEdges.rdd.flatMap(row
     =>Iterable(get_row_src(row),get_row_dst(row))).collect().toList
@@ -837,10 +861,18 @@ object STM_NodeArrivalRateMultiType {
     }
 
       // Header line of few files
-      gITeM_IndFWr.println(1+","+1)
+    gITeM_IndFWr.println(1+","+1)
       gVtxIndFWr.println(1+","+1)
       gMotifVtxAssoFWr.println(1+","+1)
       gOrbtVtxAssoFWr.println(1+","+1)
+    gVtxIndFWr.println(
+      "#num_v_nonverlapping,num_v_max,v_independence_0_0")
+    gITeM_IndFWr.println(
+      "#num_total_motif,num_ind_motif,motif_independence_0_0"
+    )
+    gWindowTimeFWriter.println("#duration,"+ duration)
+    gWindowTimeFWriter.flush()
+
     try {
       val g = findAllITeM(gETypes, call_id, initial_simple_tag,  duration,filterNodeIDs,k_top,max_cores)
       if (gDebug) {
@@ -950,19 +982,28 @@ object STM_NodeArrivalRateMultiType {
     val total_edges: Long = initial_simple_tag.filter(e => e._4 > -1).count()
     var window_prob: ListBuffer[Double] = ListBuffer.empty
 
+    //val deg_File = new PrintWriter(new File("Deg_Dist.csv"))
     for (i <- 0 to num_windows - 1) {
       val win_start_time = minTime + i * time_in_window
       val win_end_time = minTime + (i + 1) * time_in_window
       myprintln("win start and end "+ win_start_time+ win_end_time)
 
-      val edges_in_current_window: Long = initial_simple_tag
+
+      val all_edges_in_current_window = initial_simple_tag
         .filter(
           e =>
             (e._4 >= win_start_time) //start and end time does not include -1
               && (e._4 < win_end_time)
         )
-        .count()
-      myprintln(" edges in current window i = "+ i+ edges_in_current_window)
+//      val deg_dist = all_edges_in_current_window.flatMap(e
+//      =>Iterator((e._1,1),(e._3,1))).reduceByKey((d1,d2)=>d1+d2).map(v=>v._2).collect()
+//
+//      deg_File.println(deg_dist.mkString(","))
+//      deg_File.flush()
+//
+      val edges_in_current_window: Long =
+        all_edges_in_current_window.count()
+      myprintln(" edges in current window i = "+ i + " " + edges_in_current_window)
       window_prob += edges_in_current_window.toDouble / total_edges
     }
     myprintln("prob is " + window_prob)
@@ -993,7 +1034,7 @@ object STM_NodeArrivalRateMultiType {
             )
             gITeM_IndFWr.println(
               "#num_total_motif,num_ind_motif," +
-                "motif_independence," + itr + "," + i
+                "motif_independence_" + itr + "_" + i
             )
             num_w_in_sampling = num_w_in_sampling + 1
 
@@ -1416,6 +1457,15 @@ object STM_NodeArrivalRateMultiType {
           (max_time - min_time).toDouble / all_multi_edges_on_srcdst.size
         })
 
+
+        println("Higher total graph eddges "  + multi_edges_info.count())
+        if (gHigherGOut == true) {
+          // Only show the source node where we have simultanious edges
+          multi_edges_info.collect()
+            .foreach(e => gHigherGraphFWriter.println(e._2._2))
+          gHigherGraphFWriter.flush()
+        }
+
         val eSum = avg_offset_time_perkey.sum
         val eCnt = avg_offset_time_perkey.count
         val eMean: Long = eSum.toLong / eCnt
@@ -1558,6 +1608,14 @@ object STM_NodeArrivalRateMultiType {
       val gSC: SparkContext = SparkSession.builder.getOrCreate().sparkContext
       val gVBirthTime_exec = gSC.broadcast(gVBirthTime).value
 
+      println("higher edges self loop " + selctedMotifEdges.count())
+      if (gHigherGOut == true) {
+        // Only show the source node where we have simultanious edges
+        selctedMotifEdges.collect
+          .foreach(e => gHigherGraphFWriter.println(get_row_id(e)))
+        gHigherGraphFWriter.flush()
+      }
+
       val new_self_loop_v =selctedMotifEdges
         .filter(row => {
           val v = get_row_src(row)
@@ -1607,6 +1665,8 @@ object STM_NodeArrivalRateMultiType {
         .distinct()
         .collect()
 
+      self_loop_nodes.foreach(v=> gMotifVtxCooccurFWr.println(v + "," + v + "," + motifName))
+      gMotifVtxCooccurFWr.flush()
       writeMotifVertexAssoication(self_loop_nodes, motifName)
 
       val v_distinct = self_loop_nodes.length
@@ -1649,6 +1709,14 @@ object STM_NodeArrivalRateMultiType {
       validMotifsArray: RDD[(Int, Int, Int, Long)],
       motifName: String
   ): Unit = {
+    /*use this method as entry point to write motif
+    co-occurence file also
+     */
+    validMotifsArray.collect().foreach(e=>
+    gMotifVtxCooccurFWr.println(e._1 + "," + e._3 + "," + motifName))
+    gMotifVtxCooccurFWr.flush()
+
+
     val multi_edge_nodes: Array[Int] = validMotifsArray
       .flatMap(e => {
         Iterator(e._1, e._3)
@@ -1836,8 +1904,6 @@ object STM_NodeArrivalRateMultiType {
       vertex_item_freq = vertex_item_freq + (nid ->update_freq_map)
       // now frequency of a specific ITeM_Id is updated
     }
-    //println("before item freq" + gVertex_ITeM_Freq.toString())
-    //println("local ferq" + vertex_item_freq.toString())
     gVertex_ITeM_Freq = gVertex_ITeM_Freq |+| vertex_item_freq
     //println("after item ferq" + gVertex_ITeM_Freq.toString())
   }
@@ -1892,15 +1958,34 @@ object STM_NodeArrivalRateMultiType {
          * Otherwise i.e. 2e3v, star creates a set of all the nodes and return as a list
          * The order is not preserved
          */
+        /*
+        this causes bug for triad so use the else part only that
+        applies to all situations
         val node_ids =
           if (num_motif_nodes == num_motif_edges)
             all_edges_arrs.map(e => e(0).toInt).toList
           else
+          */
+
+          val node_ids =
             all_edges_arrs
               .flatMap(e => Set(e(0).toInt, e(2).toInt))
               .toSet
               .toList
+/*
+        if(Array("outdiad","indiad","inoutdiad","outstar", "instar","triad") contains motif_name)
+          {
+           // println(" Printing " + motif_name)
+            val dyadGraphFile = new PrintWriter(new FileWriter(t1 + "_"+motif_name + "_dyad.txt",true ))
+            all_edges_arrs.foreach(e=>dyadGraphFile.println(e.toList))
+            dyadGraphFile.flush()
 
+
+            val dyadNodeFile =new PrintWriter(new FileWriter(t1 + "_NodeList_"+motif_name + "_dyad.txt",true ))
+            node_ids.foreach(n=>dyadNodeFile.println(n))
+            dyadNodeFile.flush()
+          }
+*/
         for (nid <- node_ids) {
           val node_time = gVBirthTime_exec.getOrElse(nid, -1L)
           if (all_times.contains(node_time)) // new node so set its time as -1 for future
@@ -1975,7 +2060,7 @@ object STM_NodeArrivalRateMultiType {
 
   def updateOrbitFreq(motifName: String, orbit_vertex: RDD[(vertexId, Array[vertexId])],max_cores:Int) :Unit =
     {
-      println("motif name is " + motifName)
+      //println("motif name is " + motifName)
       val vertex_orbit_freq = orbit_vertex.map(ov=>{
         val size1_arr = ov._2
         (size1_arr(0),Array(gMotifNameToOrbitKeys.get(motifName).get(ov._1)))
@@ -2321,6 +2406,7 @@ object STM_NodeArrivalRateMultiType {
     | 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|316|   0| 97|1015455157|
     | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|316|   0| 97|1015455157|
      */
+    overlappingMotifs.collect().foreach(m=>println(get_row_id(m)))
     val selctedMotifEdges_local_nonoverlap =
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {
@@ -2357,10 +2443,11 @@ object STM_NodeArrivalRateMultiType {
         num_motif_nodes * num_motif_edges
       )
       .cache()
+    println("TOtal higher edgees in quad 4E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      valid_motif_overlap_graph.vertices.collect
-        .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      gHigherGraphFWriter.flush()
+      //valid_motif_overlap_graph.vertices.collect
+        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
+      //gHigherGraphFWriter.flush()
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter
@@ -2624,6 +2711,14 @@ object STM_NodeArrivalRateMultiType {
 
         .cache()
 
+    /*val topkfile = new PrintWriter(new FileWriter("topk_"+motifName + ".txt",true))
+    global_high_star_motifs.collect().foreach(eset=>{
+      for(e <- eset)
+        topkfile.println(get_row_id(e))
+    })
+    topkfile.flush()
+
+     */
     // creating same datastruture to make it consistent with rest of the code
     val true_mis_set_rdd_star: RDD[String] =
       global_high_star_motifs.map(rowset => {
@@ -2899,10 +2994,11 @@ object STM_NodeArrivalRateMultiType {
         num_motif_nodes * num_motif_edges
       )
       .cache()
+    println("TOtal higher edgees in 3E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      valid_motif_overlap_graph.vertices.collect
-        .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      gHigherGraphFWriter.flush()
+      //valid_motif_overlap_graph.vertices.collect
+        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
+      //gHigherGraphFWriter.flush()
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter
@@ -3156,10 +3252,12 @@ object STM_NodeArrivalRateMultiType {
         num_motif_nodes * num_motif_edges
       )
       .cache()
+    println("Total higher edges 2E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      valid_motif_overlap_graph.vertices.collect
-        .foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      gHigherGraphFWriter.flush()
+      //valid_motif_overlap_graph.vertices.collect
+        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
+      //gHigherGraphFWriter.flush()
+      print("Total higher edges 2EN " + valid_motif_overlap_graph.edges.count())
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter
@@ -3317,11 +3415,10 @@ object STM_NodeArrivalRateMultiType {
     else g_base
 
     if (gDebug) {
-      println("graph sizev ", g.vertices.count)
+      println("graph sizev ", g.vertices.distinct.count)
       println("graph size e", g.edges.count)
     }
 
-    val nodeReuse: ArrayBuffer[Int] = ArrayBuffer.fill(3)(0)
     var tmpG = g
     for (et1 <- gETypes.indices) {
       val overlappingMotifs =
@@ -3359,7 +3456,11 @@ object STM_NodeArrivalRateMultiType {
           return tmpG
         }
       }
-
+/*
+      val resi_edge_file = new PrintWriter(new FileWriter(t1+"residuel_edges.txt", true))
+      selctedMotifEdges.collect().foreach(row=>resi_edge_file.println(get_row_id(row)))
+      resi_edge_file.flush()
+  */
       /*
        * write residual nodes to a file
        */
@@ -3369,6 +3470,11 @@ object STM_NodeArrivalRateMultiType {
         })
         .distinct()
         .collect()
+
+      //write co-occurennce
+      resi_edge_nodes.foreach(v=> gMotifVtxCooccurFWr.println(v + "," + v + "," + motifName))
+      gMotifVtxCooccurFWr.flush()
+
       val motif_v_file = new PrintWriter(
         new File(
           t1 + "residual" + prefix_annotation +
@@ -3391,14 +3497,17 @@ object STM_NodeArrivalRateMultiType {
        *
        * Both the nodes can not be "new" because that is a "isolated edge" by definition and must
        * be identified earlier.
+       * BUG: Even both nodes can be "new" . TODO :fix it
        */
+     println("Toatal higher edges " + selctedMotifEdges.count())
       if (gHigherGOut == true) {
         // Write all residual edges
         selctedMotifEdges.collect
           .foreach(row => gHigherGraphFWriter.println(get_row_id(row)))
         gHigherGraphFWriter.flush()
       }
-      val one_new_nodes = selctedMotifEdges
+      //BUG : evn residual edge can have both "new" nodes.
+      val at_least_one_new_nodes_edges = selctedMotifEdges
         .filter(row => {
           val src = get_row_src(row)
           val dst = get_row_dst(row)
@@ -3409,9 +3518,9 @@ object STM_NodeArrivalRateMultiType {
           else false
         }).persist()
 
-      val one_new_nodes_motif_cnt = one_new_nodes.count().toInt
+      val one_new_nodes_motif_cnt = at_least_one_new_nodes_edges.count().toInt
 
-      val both_reused_nodes = selctedMotifEdges.filter(row => {
+      val both_reused_nodes_edges = selctedMotifEdges.filter(row => {
           val src = get_row_src(row)
           val dst = get_row_dst(row)
           val etime = get_row_time(row)
@@ -3420,6 +3529,9 @@ object STM_NodeArrivalRateMultiType {
             false
           else true
         }).persist()
+
+      //print("residueal edge . one node reuse count " + one_new_nodes_motif_cnt )
+      //print("residueal edge . both nodes reuse count " + both_reused_nodes_edges.count().toInt )
 
       //update vertex orbit frequency
       val tmprdd = selctedMotifEdges.rdd.cache()
@@ -3435,8 +3547,10 @@ object STM_NodeArrivalRateMultiType {
 
 
       // update vertex item frequency
-      val new_node_ids = one_new_nodes.rdd.map(row=>get_row_src(row)).collect().toList
-      val reuse_node_ids = both_reused_nodes.rdd.map(row=>get_row_src(row)).collect().toList
+      val new_node_ids = at_least_one_new_nodes_edges.rdd.flatMap(row=>Iterable(get_row_src(row),
+        get_row_dst(row))).distinct().collect().toList
+      val reuse_node_ids = both_reused_nodes_edges.rdd.flatMap(row=>Iterable(get_row_src(row),
+        get_row_dst(row))).distinct().collect().toList
       updateITemFreq(motifName,new_node_ids,0)
       updateITemFreq(motifName,reuse_node_ids,1)
 
@@ -3471,15 +3585,33 @@ object STM_NodeArrivalRateMultiType {
       out_dir_base.mkdirs()
 
     try {
+      gITeMRateFWr.close()
+      gITeM_FreqFWr.close()
+      gOffsetFWriter.close()
+      gOffsetAllFWriter.close()
+      gVertexBirthFWriter.close()
+      gITeM_IndFWr.close()
+      gVtxIndFWr.close()
+      gHigherGraphFWriter.close()
+      nodemapFile.close()
+      gMotifVtxAssoFWr.close()
+      gOrbtVtxAssoFWr.close()
+      gMotifVtxCooccurFWr.close()
+      gVertexITeMFreqFWr.close()
+      gVertexOrbitFreqFWr.close()
+      gOrbit_Ind_FWr.close()
+      gWindowSizeFWriter.close()
+      gWindowTimeFWriter.close()
+
       moveFileInner(gITeMRateFile)
       moveFileInner(gITeM_FreqFile)
-      moveFileInner(gMotifAllProbFile_Individual)
       moveFileInner(gOffsetFile)
       moveFileInner(gOffsetAllFile)
       moveFileInner(gVertexBirthFile)
       moveFileInner(gITeM_IndFile)
       moveFileInner(gVtxIndFile)
       moveFileInner(gHigherGraphFile)
+      moveFileInner(nodemapFileObj)
 
       val directory = new File(".")
       myprintln("curr dir is "+ directory.getAbsolutePath)
