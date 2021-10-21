@@ -247,13 +247,12 @@ object STM_NodeArrivalRateMultiType {
       .set("spark.kryoserializer.buffer.max","2000m")
       .set("spark.sql.broadcastTimeout","10000000")
       .set("spark.network.timeout","10000000")
-      .set("spark.driver.maxResultSize","30g").set("spark.local.dir","D:\\tmp\\")
+      .set("spark.driver.maxResultSize","30g").set("spark.local.dir","C:\\tmp\\")
     lazy val sparkSession = SparkSession
       .builder()
       .appName("STM").master("local")
       .config(sparkConf)
       .getOrCreate()
-
 
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("akka").setLevel(Level.OFF)
