@@ -150,7 +150,7 @@ object STM_NodeArrivalRateMultiType {
   val nodemapFileObj = new File(t1 + "_nodeMap.txt")
   val nodemapFile = new PrintWriter(nodemapFileObj)
 
-  val gDebug = false
+  val gDebug = true
   val gHigherGOut = false
   val gAtomicMotifs: Map[String, String] = STMConf.atomocMotif
   val gMotifKeyToName = STMConf.atomocMotifKeyToName
@@ -271,14 +271,20 @@ object STM_NodeArrivalRateMultiType {
      */
     //val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
 
+    //val filepath = "/Users/puro755/PNNL/ML for Metalloproteins - General/CpFeRd_RPmutants_Fe2_Fe3_CONECT/Fe2_CONECT_PDB/G10A_Fe2_CONECT.pdb"
 
+    //val filepath = "/Users/puro755/PNNL/ML for Metalloproteins - General/CpFeRd_RPmutants_Fe2_Fe3_CONECT/Fe2_CONECT_PDB/V8R_L41R_Fe2_CONECT.pdb"
+    //val filepath = "/Users/puro755/PNNL/ML for Metalloproteins - General/CpFeRd_RPmutants_Fe2_Fe3_CONECT/Fe2_CONECT_PDB/L41R_Fe2_CONECT.pdb"
+    //val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar_PDB(filepath,sc," +")
+    //println(inputtag_varchartmp.count)
+    //println("done")
 
     val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
-    val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )) .cache()
+    val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )).cache()
     inputtag_varchartmp.unpersist(true)
     val filterarr :Array[String] = clo.getOrElse("-filterset","").split(",")
     myprintln("filterset arr input "+ filterarr.toList)
-
+    myprintln("input tag var is " + inputtag_varchar.count())
     val node_id_label :Array[(vertexId, Array[Char])]= inputtag_varchar.flatMap(entry=>Iterator((entry._1,entry._7(0)),
       (entry._3,entry._7(1)))).distinct().collect()
 
@@ -308,6 +314,7 @@ object STM_NodeArrivalRateMultiType {
                                                       Array.empty[Int]) ).cache()
     import gov.pnnl.datamodel.TAG
     val inputTAG = new TAG(inputtag)
+    println("Lend og input TAG " + inputTAG.tag_rdd.count())
     /*
      * Main method to get motif probability .It returns 3 results:
      *    * normMotifProb: normalized motif probability
@@ -2405,7 +2412,7 @@ object STM_NodeArrivalRateMultiType {
     | 97|   0|111|1015207236|111|   0|103|1024268020|103|   0|316|1050004092|316|   0| 97|1015455157|
     | 97|   0|106|1016843104|106|   0|103|1012522993|103|   0|316|1050004092|316|   0| 97|1015455157|
      */
-    overlappingMotifs.collect().foreach(m=>println(get_row_id(m)))
+   // overlappingMotifs.collect().foreach(m=>println(get_row_id(m)))
     val selctedMotifEdges_local_nonoverlap =
       get_local_NO_motifs(overlappingMotifs, selectEdgeArr, sqlc).cache()
     try {

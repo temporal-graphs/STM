@@ -64,7 +64,12 @@
             <artifactId>log4j-core</artifactId>
             <version>2.14.1</version>
         </dependency>
-
+        <!-- https://mvnrepository.com/artifact/org.scala-lang.modules/scala-xml -->
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-xml_2.12</artifactId>
+            <version>2.0.1</version>
+        </dependency>
         <!--
           Including TAGBuilder from pnnl repo
         -->
