@@ -50,10 +50,14 @@ python STMGetEmbedding.py './item-output/' './emb'
 
 If you find this useful, please cite following publication
 ```
-@article{purohit2020item,
-  title={ITeM: Independent Temporal Motifs to Summarize and Compare Temporal Networks},
-  author={Purohit, Sumit and Holder, Lawrence B and Chin, George},
-  journal={arXiv preprint arXiv:2002.08312},
-  year={2020}
+@article{purohit2022item,
+  title={ITeM: Independent temporal motifs to summarize and compare temporal networks},
+  author={Purohit, Sumit and Chin, George and Holder, Lawrence B},
+  journal={Intelligent Data Analysis},
+  volume={26},
+  number={4},
+  pages={1071--1096},
+  year={2022},
+  publisher={IOS Press}
 }
 ```
