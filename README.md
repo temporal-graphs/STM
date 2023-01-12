@@ -14,7 +14,9 @@ and generates various distributions using ITeM
 Please contact Sumit.Purohit@pnnl.gov for any question.
 
 ```
-#clone TAGBuilder and install it
+
+
+#clone TAGBuilder and install it in <HOME> dir
 
 git clone https://github.com/temporal-graphs/TAGBuilder.git
 
@@ -26,7 +28,11 @@ cd TAGBuilder/code/TAGBuilder
 
 mvn clean package install
 
+cd <HOME>
+
 git clone https://github.com/temporal-graphs/STM.git
+
+cd STM
 
 mvn clean package
 ```
