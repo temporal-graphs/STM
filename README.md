@@ -50,7 +50,7 @@ where `input.csv` has following format
 
 It generates multiple internal files for different temporal properties. Follwoing script reads them in and generate "graph embeddings" and "node embeddings"
 ```
-python STMGetEmbedding.py './item-output/' './emb'
+python STMGetEmbedding.py './item-output/' './emb/'
 ```
 
 
