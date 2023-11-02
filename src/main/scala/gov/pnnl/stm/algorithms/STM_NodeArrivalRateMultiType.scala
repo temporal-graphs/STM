@@ -269,15 +269,7 @@ object STM_NodeArrivalRateMultiType {
      * Get the base tag rdd which has 4 things: src etype dst time
      *
      */
-    //val inputTAG = TAGBuilder.init_rdd(nodeFile, sc, sep)
 
-    //val filepath = "/Users/puro755/PNNL/ML for Metalloproteins - General/CpFeRd_RPmutants_Fe2_Fe3_CONECT/Fe2_CONECT_PDB/G10A_Fe2_CONECT.pdb"
-
-    //val filepath = "/Users/puro755/PNNL/ML for Metalloproteins - General/CpFeRd_RPmutants_Fe2_Fe3_CONECT/Fe2_CONECT_PDB/V8R_L41R_Fe2_CONECT.pdb"
-    //val filepath = "/Users/puro755/PNNL/ML for Metalloproteins - General/CpFeRd_RPmutants_Fe2_Fe3_CONECT/Fe2_CONECT_PDB/L41R_Fe2_CONECT.pdb"
-    //val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar_PDB(filepath,sc," +")
-    //println(inputtag_varchartmp.count)
-    //println("done")
 
     val inputtag_varchartmp = TAGBuilder.init_tagrdd_varchar(nodeFile,sc,sep).cache()
     val inputtag_varchar = inputtag_varchartmp.filter(e=>(e._1 != "".hashCode) && (e._3 != "".hashCode )).cache()
@@ -2451,9 +2443,6 @@ object STM_NodeArrivalRateMultiType {
       .cache()
     println("TOtal higher edgees in quad 4E " + valid_motif_overlap_graph.edges.count())
     if (gHigherGOut == true) {
-      //valid_motif_overlap_graph.vertices.collect
-        //.foreach(e => gHigherGraphFWriter.println(e.getAs[String](0)))
-      //gHigherGraphFWriter.flush()
       valid_motif_overlap_graph.edges.collect.foreach(
         e =>
           gHigherGraphFWriter

@@ -236,7 +236,6 @@ object MaximumIndependentSet {
     })*/
 
     val mis_id_set = res_graph.vertices.map(v => v._2._2).distinct()
-    //res_graph.vertices.collect.foreach(v=> println("res v ", v._2._1,v._2._2))
     g_dash.unpersist(true)
 
     //because the 2nd element is the representative motif
