@@ -54,6 +54,9 @@ python STMGetEmbedding.py './item-output/' './emb/'
 ```
 
 
+Example Temporal Motifs ![ITeM](https://github.com/temporal-graphs/STM/assets/4779453/c774b2d8-3e3e-46f7-82d0-73a8bcf792c3)
+
+
 If you find this useful, please cite following publication
 ```
 @article{purohit2022item,
